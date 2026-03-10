@@ -1,1 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="96" viewBox="0 0 64 96"><ellipse cx="32" cy="88" rx="21.12" ry="7.040000000000001" fill="rgba(0,0,0,0.25)"/><polygon points="14.399999999999999,84 32,75.2 32,47.2 14.399999999999999,56" fill="rgb(112,95,88)"/><polygon points="32,75.2 49.6,84 49.6,56 32,47.2" fill="#A1887F"/><line x1="14.399999999999999" y1="70" x2="32" y2="61.2" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/><line x1="32" y1="61.2" x2="49.6" y2="70" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/><rect x="20.4" y="77" width="5" height="5" fill="#FFE0B2" opacity="0.9" rx="0.5"/><rect x="21.4" y="78" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="30.4" y="77" width="5" height="5" fill="#FFE0B2" opacity="0.9" rx="0.5"/><rect x="31.4" y="78" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="20.4" y="63" width="5" height="5" fill="#FFE0B2" opacity="0.9" rx="0.5"/><rect x="21.4" y="64" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="30.4" y="63" width="5" height="5" fill="#FFE0B2" opacity="0.9" rx="0.5"/><rect x="31.4" y="64" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="36" y="77" width="5" height="5" fill="#FFE0B2" opacity="0.7" rx="0.5"/><rect x="37" y="78" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="46" y="77" width="5" height="5" fill="#FFE0B2" opacity="0.7" rx="0.5"/><rect x="47" y="78" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="36" y="63" width="5" height="5" fill="#FFE0B2" opacity="0.7" rx="0.5"/><rect x="37" y="64" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="46" y="63" width="5" height="5" fill="#FFE0B2" opacity="0.7" rx="0.5"/><rect x="47" y="64" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><polygon points="11.399999999999999,57 31,46.2 31,44 11.399999999999999,52.8" fill="rgb(87,60,52)"/><polygon points="31,46.2 52.6,57 52.6,52.8 31,44" fill="#6D4C41"/><rect x="34" y="69.6" width="7" height="10" fill="rgb(64,54,50)" rx="1"/><rect x="35" y="70.6" width="5" height="9" fill="rgb(88,74,69)" rx="0.5"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="96" viewBox="0 0 64 96">
+  <ellipse cx="32" cy="88" rx="21" ry="7" fill="rgba(0,0,0,0.25)"/>
+  <polygon points="19,84 32,77 32,52 19,59" fill="rgb(112,95,88)"/>
+  <polygon points="32,77 45,84 45,59 32,52" fill="#A1887F"/>
+  <polygon points="16,60 32,48 32,52 16,63" fill="rgb(87,60,52)"/>
+  <polygon points="32,48 48,60 48,63 32,52" fill="#6D4C41"/>
+  <rect x="22" y="69" width="4" height="4" fill="#FFE0B2" opacity="0.9" rx="0.5"/>
+  <rect x="23" y="70" width="2" height="2" fill="rgba(255,255,200,0.5)" rx="0.3"/>
+  <rect x="22" y="61" width="4" height="4" fill="#FFE0B2" opacity="0.9" rx="0.5"/>
+  <rect x="23" y="62" width="2" height="2" fill="rgba(255,255,200,0.5)" rx="0.3"/>
+  <rect x="37" y="69" width="4" height="4" fill="#FFE0B2" opacity="0.7" rx="0.5"/>
+  <rect x="38" y="70" width="2" height="2" fill="rgba(255,255,200,0.4)" rx="0.3"/>
+  <rect x="35" y="73" width="5" height="8" fill="rgb(64,54,50)" rx="0.8"/>
+  <rect x="36" y="74" width="3" height="7" fill="rgb(88,74,69)" rx="0.5"/>
+  <rect x="40" y="46" width="3" height="8" fill="rgb(87,60,52)" rx="0.3"/>
+  <rect x="22" y="73" width="5" height="1.5" fill="rgb(87,60,52)"/>
+  <circle cx="23" cy="72.5" r="1" fill="#FF9800" opacity="0.6"/>
+  <circle cx="25" cy="72.5" r="1" fill="#FF9800" opacity="0.5"/>
+  <circle cx="27" cy="72.5" r="1" fill="#FF9800" opacity="0.6"/>
+</svg>

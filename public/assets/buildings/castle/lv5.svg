@@ -1,1 +1,57 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="96" viewBox="0 0 64 96"><ellipse cx="32" cy="88" rx="21.12" ry="7.040000000000001" fill="rgba(0,0,0,0.25)"/><polygon points="14.399999999999999,84 32,75.2 32,-24.8 14.399999999999999,-16" fill="rgb(58,77,85)"/><polygon points="32,75.2 49.6,84 49.6,-16 32,-24.8" fill="#546E7A"/><line x1="14.399999999999999" y1="64" x2="32" y2="55.2" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/><line x1="32" y1="55.2" x2="49.6" y2="64" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/><line x1="14.399999999999999" y1="44" x2="32" y2="35.2" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/><line x1="32" y1="35.2" x2="49.6" y2="44" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/><line x1="14.399999999999999" y1="24" x2="32" y2="15.2" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/><line x1="32" y1="15.2" x2="49.6" y2="24" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/><line x1="14.399999999999999" y1="4" x2="32" y2="-4.800000000000001" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/><line x1="32" y1="-4.800000000000001" x2="49.6" y2="4" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/><rect x="20.4" y="74" width="5" height="5" fill="#FFD700" opacity="0.9" rx="0.5"/><rect x="21.4" y="75" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="30.4" y="74" width="5" height="5" fill="#FFD700" opacity="0.9" rx="0.5"/><rect x="31.4" y="75" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="20.4" y="54" width="5" height="5" fill="#FFD700" opacity="0.9" rx="0.5"/><rect x="21.4" y="55" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="30.4" y="54" width="5" height="5" fill="#FFD700" opacity="0.9" rx="0.5"/><rect x="31.4" y="55" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="20.4" y="34" width="5" height="5" fill="#FFD700" opacity="0.9" rx="0.5"/><rect x="21.4" y="35" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="30.4" y="34" width="5" height="5" fill="#FFD700" opacity="0.9" rx="0.5"/><rect x="31.4" y="35" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="20.4" y="14" width="5" height="5" fill="#FFD700" opacity="0.9" rx="0.5"/><rect x="21.4" y="15" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="30.4" y="14" width="5" height="5" fill="#FFD700" opacity="0.9" rx="0.5"/><rect x="31.4" y="15" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="36" y="74" width="5" height="5" fill="#FFD700" opacity="0.7" rx="0.5"/><rect x="37" y="75" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="46" y="74" width="5" height="5" fill="#FFD700" opacity="0.7" rx="0.5"/><rect x="47" y="75" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="36" y="54" width="5" height="5" fill="#FFD700" opacity="0.7" rx="0.5"/><rect x="37" y="55" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="46" y="54" width="5" height="5" fill="#FFD700" opacity="0.7" rx="0.5"/><rect x="47" y="55" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="36" y="34" width="5" height="5" fill="#FFD700" opacity="0.7" rx="0.5"/><rect x="37" y="35" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="46" y="34" width="5" height="5" fill="#FFD700" opacity="0.7" rx="0.5"/><rect x="47" y="35" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="36" y="14" width="5" height="5" fill="#FFD700" opacity="0.7" rx="0.5"/><rect x="37" y="15" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="46" y="14" width="5" height="5" fill="#FFD700" opacity="0.7" rx="0.5"/><rect x="47" y="15" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><polygon points="12.399999999999999,-16 32,-26.8 32,-45" fill="rgb(96,115,124)"/><polygon points="32,-26.8 51.6,-16 51.6,-18 32,-45" fill="#78909C"/><circle cx="32" cy="-47" r="2" fill="#FFD700"/><rect x="34" y="66.6" width="10" height="13" fill="rgb(33,44,48)" rx="1"/><rect x="35" y="67.6" width="8" height="12" fill="rgb(46,60,67)" rx="0.5"/><rect x="43.6" y="-24" width="4" height="8" fill="rgb(42,55,61)" rx="0.5"/><line x1="47.6" y1="-28" x2="47.6" y2="-40" stroke="#5D4037" stroke-width="1"/><polygon points="48.6,-40 57.6,-37 48.6,-34" fill="#FFD700"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="96" viewBox="0 0 64 96">
+  <!-- Shadow -->
+  <ellipse cx="32" cy="88" rx="21" ry="7" fill="rgba(0,0,0,0.25)"/>
+  <!-- Grand castle lv5: same as lv4 (castle caps at 3 milestones) with slight gold trim -->
+  <!-- Central tower left wall -->
+  <polygon points="20,84 32,77 32,18 20,25" fill="rgb(58,77,85)"/>
+  <!-- Central tower right wall -->
+  <polygon points="32,77 44,84 44,25 32,18" fill="#546E7A"/>
+  <!-- Floor lines -->
+  <line x1="20" y1="68" x2="32" y2="61" stroke="rgba(0,0,0,0.07)" stroke-width="0.4"/>
+  <line x1="32" y1="61" x2="44" y2="68" stroke="rgba(0,0,0,0.05)" stroke-width="0.4"/>
+  <line x1="20" y1="52" x2="32" y2="45" stroke="rgba(0,0,0,0.07)" stroke-width="0.4"/>
+  <line x1="32" y1="45" x2="44" y2="52" stroke="rgba(0,0,0,0.05)" stroke-width="0.4"/>
+  <line x1="20" y1="36" x2="32" y2="29" stroke="rgba(0,0,0,0.07)" stroke-width="0.4"/>
+  <line x1="32" y1="29" x2="44" y2="36" stroke="rgba(0,0,0,0.05)" stroke-width="0.4"/>
+  <!-- Central tower pointed roof -->
+  <polygon points="18,25 32,14 32,4" fill="rgb(96,115,124)"/>
+  <polygon points="32,14 46,25 46,23 32,4" fill="#78909C"/>
+  <!-- Golden spire -->
+  <line x1="32" y1="4" x2="32" y2="-6" stroke="#FFD700" stroke-width="1.5"/>
+  <circle cx="32" cy="-7" r="2.5" fill="#FFD700"/>
+  <!-- Left side tower -->
+  <polygon points="8,74 18,68 18,34 8,40" fill="rgb(66,88,97)"/>
+  <polygon points="6,40 13,30 20,34" fill="rgb(96,115,124)"/>
+  <polygon points="13,30 20,34 20,32 13,28" fill="#78909C"/>
+  <circle cx="13" cy="27" r="1.5" fill="#FFD700" opacity="0.8"/>
+  <rect x="11" y="52" width="3" height="4" fill="#FFD700" opacity="0.8" rx="0.5"/>
+  <rect x="11" y="62" width="3" height="4" fill="#FFD700" opacity="0.8" rx="0.5"/>
+  <!-- Right side tower -->
+  <polygon points="44,68 56,74 56,40 44,34" fill="#607D8B"/>
+  <polygon points="42,34 49,30 58,40" fill="rgb(96,115,124)"/>
+  <polygon points="49,30 58,40 58,38 49,28" fill="#78909C"/>
+  <circle cx="49" cy="27" r="1.5" fill="#FFD700" opacity="0.7"/>
+  <rect x="48" y="52" width="3" height="4" fill="#FFD700" opacity="0.7" rx="0.5"/>
+  <rect x="48" y="62" width="3" height="4" fill="#FFD700" opacity="0.7" rx="0.5"/>
+  <!-- Gold trim along base -->
+  <line x1="20" y1="84" x2="32" y2="77" stroke="#FFD700" stroke-width="0.8" opacity="0.5"/>
+  <line x1="32" y1="77" x2="44" y2="84" stroke="#FFD700" stroke-width="0.8" opacity="0.4"/>
+  <!-- Central windows -->
+  <rect x="24" y="70" width="4" height="5" fill="#FFD700" opacity="0.9" rx="0.5"/>
+  <rect x="25" y="71" width="2" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/>
+  <rect x="24" y="54" width="4" height="5" fill="#FFD700" opacity="0.85" rx="0.5"/>
+  <rect x="25" y="55" width="2" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/>
+  <rect x="24" y="38" width="4" height="5" fill="#FFD700" opacity="0.8" rx="0.5"/>
+  <rect x="25" y="39" width="2" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/>
+  <rect x="36" y="72" width="4" height="5" fill="#FFD700" opacity="0.7" rx="0.5"/>
+  <rect x="37" y="73" width="2" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/>
+  <rect x="36" y="56" width="4" height="5" fill="#FFD700" opacity="0.65" rx="0.5"/>
+  <rect x="37" y="57" width="2" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/>
+  <!-- Grand gate -->
+  <rect x="34" y="76" width="8" height="8" fill="rgb(33,44,48)" rx="1.5"/>
+  <rect x="35" y="77" width="6" height="7" fill="rgb(46,60,67)" rx="1"/>
+  <path d="M35,77 Q38,74 41,77" fill="rgb(33,44,48)"/>
+  <!-- Banner/flag -->
+  <line x1="44" y1="18" x2="44" y2="6" stroke="#5D4037" stroke-width="1"/>
+  <polygon points="45,6 53,9 45,12" fill="#FFD700"/>
+</svg>

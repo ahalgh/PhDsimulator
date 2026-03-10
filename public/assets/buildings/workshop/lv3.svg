@@ -1,1 +1,48 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="96" viewBox="0 0 64 96"><ellipse cx="32" cy="88" rx="21.12" ry="7.040000000000001" fill="rgba(0,0,0,0.25)"/><polygon points="14.399999999999999,84 32,75.2 32,27.2 14.399999999999999,36" fill="rgb(133,37,8)"/><polygon points="32,75.2 49.6,84 49.6,36 32,27.2" fill="#BF360C"/><line x1="14.399999999999999" y1="68" x2="32" y2="59.2" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/><line x1="32" y1="59.2" x2="49.6" y2="68" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/><line x1="14.399999999999999" y1="52" x2="32" y2="43.2" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/><line x1="32" y1="43.2" x2="49.6" y2="52" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/><rect x="20.4" y="76" width="5" height="5" fill="#FF9800" opacity="0.9" rx="0.5"/><rect x="21.4" y="77" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="30.4" y="76" width="5" height="5" fill="#FF9800" opacity="0.9" rx="0.5"/><rect x="31.4" y="77" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="20.4" y="60" width="5" height="5" fill="#FF9800" opacity="0.9" rx="0.5"/><rect x="21.4" y="61" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="30.4" y="60" width="5" height="5" fill="#FF9800" opacity="0.9" rx="0.5"/><rect x="31.4" y="61" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="20.4" y="44" width="5" height="5" fill="#FF9800" opacity="0.9" rx="0.5"/><rect x="21.4" y="45" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="30.4" y="44" width="5" height="5" fill="#FF9800" opacity="0.9" rx="0.5"/><rect x="31.4" y="45" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="36" y="76" width="5" height="5" fill="#FF9800" opacity="0.7" rx="0.5"/><rect x="37" y="77" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="46" y="76" width="5" height="5" fill="#FF9800" opacity="0.7" rx="0.5"/><rect x="47" y="77" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="36" y="60" width="5" height="5" fill="#FF9800" opacity="0.7" rx="0.5"/><rect x="37" y="61" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="46" y="60" width="5" height="5" fill="#FF9800" opacity="0.7" rx="0.5"/><rect x="47" y="61" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="36" y="44" width="5" height="5" fill="#FF9800" opacity="0.7" rx="0.5"/><rect x="37" y="45" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="46" y="44" width="5" height="5" fill="#FF9800" opacity="0.7" rx="0.5"/><rect x="47" y="45" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><polygon points="12.399999999999999,36 32,24.2 51.6,36 51.6,33 32,21.2 12.399999999999999,33" fill="#8D6E63"/><rect x="18.4" y="30" width="3" height="3" fill="rgb(98,77,69)"/><rect x="26.4" y="30" width="3" height="3" fill="rgb(98,77,69)"/><rect x="34.4" y="30" width="3" height="3" fill="rgb(98,77,69)"/><rect x="34" y="68.6" width="8" height="11" fill="rgb(76,21,4)" rx="1"/><rect x="35" y="69.6" width="6" height="10" fill="rgb(105,29,6)" rx="0.5"/><rect x="43.6" y="28" width="4" height="8" fill="rgb(95,27,6)" rx="0.5"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="96" viewBox="0 0 64 96">
+  <ellipse cx="32" cy="88" rx="21" ry="7" fill="rgba(0,0,0,0.25)"/>
+  <!-- Left wall -->
+  <polygon points="16,84 32,76 32,34 16,42" fill="rgb(133,37,8)"/>
+  <!-- Right wall -->
+  <polygon points="32,76 48,84 48,42 32,34" fill="#BF360C"/>
+  <!-- Floor lines -->
+  <line x1="16" y1="68" x2="32" y2="60" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>
+  <line x1="32" y1="60" x2="48" y2="68" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/>
+  <line x1="16" y1="52" x2="32" y2="44" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>
+  <line x1="32" y1="44" x2="48" y2="52" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/>
+  <!-- Reinforced wall band -->
+  <polygon points="16,42 32,34 48,42 48,45 32,37 16,45" fill="#8D6E63"/>
+  <!-- Tool rack detail on left wall -->
+  <rect x="19" y="44" width="1" height="5" fill="#8D6E63"/>
+  <rect x="22" y="43" width="1" height="6" fill="#8D6E63"/>
+  <rect x="25" y="44" width="1" height="5" fill="#8D6E63"/>
+  <!-- Windows left - 2 floors -->
+  <rect x="20" y="70" width="4" height="4" fill="#FF9800" opacity="0.9" rx="0.5"/>
+  <rect x="21" y="71" width="2" height="2" fill="rgba(255,255,200,0.5)" rx="0.3"/>
+  <rect x="27" y="70" width="4" height="4" fill="#FF9800" opacity="0.9" rx="0.5"/>
+  <rect x="28" y="71" width="2" height="2" fill="rgba(255,255,200,0.5)" rx="0.3"/>
+  <rect x="20" y="55" width="4" height="4" fill="#FF9800" opacity="0.9" rx="0.5"/>
+  <rect x="21" y="56" width="2" height="2" fill="rgba(255,255,200,0.5)" rx="0.3"/>
+  <rect x="27" y="55" width="4" height="4" fill="#FF9800" opacity="0.9" rx="0.5"/>
+  <rect x="28" y="56" width="2" height="2" fill="rgba(255,255,200,0.5)" rx="0.3"/>
+  <!-- Windows right -->
+  <rect x="36" y="70" width="4" height="4" fill="#FF9800" opacity="0.7" rx="0.5"/>
+  <rect x="37" y="71" width="2" height="2" fill="rgba(255,255,200,0.4)" rx="0.3"/>
+  <rect x="43" y="70" width="4" height="4" fill="#FF9800" opacity="0.7" rx="0.5"/>
+  <rect x="44" y="71" width="2" height="2" fill="rgba(255,255,200,0.4)" rx="0.3"/>
+  <rect x="36" y="55" width="4" height="4" fill="#FF9800" opacity="0.7" rx="0.5"/>
+  <rect x="37" y="56" width="2" height="2" fill="rgba(255,255,200,0.4)" rx="0.3"/>
+  <rect x="43" y="55" width="4" height="4" fill="#FF9800" opacity="0.7" rx="0.5"/>
+  <rect x="44" y="56" width="2" height="2" fill="rgba(255,255,200,0.4)" rx="0.3"/>
+  <!-- Door with metal strips -->
+  <rect x="34" y="70" width="7" height="10" fill="rgb(76,21,4)" rx="1"/>
+  <rect x="35" y="71" width="5" height="9" fill="rgb(105,29,6)" rx="0.5"/>
+  <line x1="34" y1="74" x2="41" y2="74" stroke="#8D6E63" stroke-width="0.5"/>
+  <!-- Two chimneys -->
+  <rect x="19" y="28" width="3" height="8" fill="#8D6E63" rx="0.3"/>
+  <rect x="42" y="28" width="3" height="8" fill="#8D6E63" rx="0.3"/>
+  <!-- Smoke -->
+  <circle cx="20.5" cy="26" r="1.5" fill="rgba(180,180,180,0.3)"/>
+  <circle cx="21" cy="23" r="1" fill="rgba(180,180,180,0.2)"/>
+  <circle cx="43.5" cy="26" r="1.5" fill="rgba(180,180,180,0.3)"/>
+  <circle cx="44" cy="23" r="1" fill="rgba(180,180,180,0.2)"/>
+</svg>

@@ -1,1 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="96" viewBox="0 0 64 96"><ellipse cx="32" cy="88" rx="21.12" ry="7.040000000000001" fill="rgba(0,0,0,0.25)"/><polygon points="14.399999999999999,84 32,75.2 32,47.2 14.399999999999999,56" fill="rgb(58,77,85)"/><polygon points="32,75.2 49.6,84 49.6,56 32,47.2" fill="#546E7A"/><line x1="14.399999999999999" y1="70" x2="32" y2="61.2" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/><line x1="32" y1="61.2" x2="49.6" y2="70" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/><rect x="20.4" y="77" width="5" height="5" fill="#FFD700" opacity="0.9" rx="0.5"/><rect x="21.4" y="78" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="30.4" y="77" width="5" height="5" fill="#FFD700" opacity="0.9" rx="0.5"/><rect x="31.4" y="78" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="20.4" y="63" width="5" height="5" fill="#FFD700" opacity="0.9" rx="0.5"/><rect x="21.4" y="64" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="30.4" y="63" width="5" height="5" fill="#FFD700" opacity="0.9" rx="0.5"/><rect x="31.4" y="64" width="3" height="3" fill="rgba(255,255,200,0.5)" rx="0.3"/><rect x="36" y="77" width="5" height="5" fill="#FFD700" opacity="0.7" rx="0.5"/><rect x="37" y="78" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="46" y="77" width="5" height="5" fill="#FFD700" opacity="0.7" rx="0.5"/><rect x="47" y="78" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="36" y="63" width="5" height="5" fill="#FFD700" opacity="0.7" rx="0.5"/><rect x="37" y="64" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><rect x="46" y="63" width="5" height="5" fill="#FFD700" opacity="0.7" rx="0.5"/><rect x="47" y="64" width="3" height="3" fill="rgba(255,255,200,0.4)" rx="0.3"/><polygon points="12.399999999999999,56 32,45.2 32,36" fill="rgb(96,115,124)"/><polygon points="32,45.2 51.6,56 51.6,54 32,36" fill="#78909C"/><circle cx="32" cy="34" r="2" fill="#FFD700"/><rect x="34" y="69.6" width="7" height="10" fill="rgb(33,44,48)" rx="1"/><rect x="35" y="70.6" width="5" height="9" fill="rgb(46,60,67)" rx="0.5"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="96" viewBox="0 0 64 96">
+  <!-- Shadow -->
+  <ellipse cx="32" cy="88" rx="21" ry="7" fill="rgba(0,0,0,0.25)"/>
+  <!-- Keep with watchtower: side turret, battlements, two windows (quals passed) -->
+  <!-- Main keep left wall -->
+  <polygon points="16,84 32,75 32,52 16,61" fill="rgb(58,77,85)"/>
+  <!-- Main keep right wall -->
+  <polygon points="32,75 48,84 48,61 32,52" fill="#546E7A"/>
+  <!-- Floor line -->
+  <line x1="16" y1="72" x2="32" y2="63" stroke="rgba(0,0,0,0.08)" stroke-width="0.4"/>
+  <line x1="32" y1="63" x2="48" y2="72" stroke="rgba(0,0,0,0.06)" stroke-width="0.4"/>
+  <!-- Battlements on main keep -->
+  <rect x="16" y="58" width="3" height="4" fill="rgb(58,77,85)"/>
+  <rect x="22" y="55" width="3" height="4" fill="rgb(58,77,85)"/>
+  <rect x="28" y="53" width="3" height="4" fill="rgb(58,77,85)"/>
+  <rect x="34" y="53" width="3" height="4" fill="#546E7A"/>
+  <rect x="40" y="55" width="3" height="4" fill="#546E7A"/>
+  <rect x="45" y="58" width="3" height="4" fill="#546E7A"/>
+  <!-- Side turret (on right) -->
+  <polygon points="44,70 51,74 51,48 44,44" fill="#607D8B"/>
+  <polygon points="44,44 51,48 51,42 44,38" fill="#78909C"/>
+  <!-- Turret pointed cap -->
+  <polygon points="43,38 48,35 53,42" fill="rgb(96,115,124)"/>
+  <!-- Turret window -->
+  <rect x="46" y="56" width="3" height="4" fill="#FFD700" opacity="0.7" rx="0.5"/>
+  <rect x="47" y="57" width="1.5" height="2.5" fill="rgba(255,255,200,0.4)" rx="0.3"/>
+  <!-- Main windows (left wall) -->
+  <rect x="20" y="74" width="4" height="4" fill="#FFD700" opacity="0.9" rx="0.5"/>
+  <rect x="21" y="75" width="2" height="2.5" fill="rgba(255,255,200,0.5)" rx="0.3"/>
+  <rect x="26" y="71" width="4" height="4" fill="#FFD700" opacity="0.9" rx="0.5"/>
+  <rect x="27" y="72" width="2" height="2.5" fill="rgba(255,255,200,0.5)" rx="0.3"/>
+  <!-- Upper window -->
+  <rect x="22" y="60" width="4" height="4" fill="#FFD700" opacity="0.85" rx="0.5"/>
+  <rect x="23" y="61" width="2" height="2.5" fill="rgba(255,255,200,0.5)" rx="0.3"/>
+  <!-- Gate -->
+  <rect x="35" y="74" width="7" height="9" fill="rgb(33,44,48)" rx="1"/>
+  <rect x="36" y="75" width="5" height="8" fill="rgb(46,60,67)" rx="0.5"/>
+  <!-- Portcullis hint -->
+  <line x1="38" y1="75" x2="38" y2="83" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>
+  <line x1="40" y1="75" x2="40" y2="83" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>
+</svg>
