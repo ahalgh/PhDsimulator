@@ -73,7 +73,7 @@ export class UIScene extends Scene {
 
         // Controls hint (bottom left)
         this.add.text(10, this.scale.height - 10,
-            'Arrow keys to move | Scroll to zoom | Hover buildings for details | Click ship to travel',
+            'Arrow keys to move | Scroll to zoom | Click NPCs & buildings | Click ship to travel',
             { fontFamily: 'Arial', fontSize: '11px', color: '#666666' }
         ).setOrigin(0, 1).setScrollFactor(0).setDepth(100);
 

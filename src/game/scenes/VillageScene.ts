@@ -3,6 +3,8 @@ import { EventBus } from '../EventBus';
 import { BuildingType, VillageProgress, TravelDestination, getDefaultVillageProgress } from '../types/gameState';
 import { BUILDING_CONFIGS, VILLAGE_LAYOUT, TRAVEL_DESTINATIONS, TravelDestinationConfig } from '../data/buildingConfig';
 import { loadState, getStateDiff } from '../../lib/stateManager';
+import { NpcId, NPC_CONFIGS } from '../data/dialogueConfig';
+import { DialogueSystem } from '../systems/DialogueSystem';
 
 interface PlacedBuilding {
     type: BuildingType;
@@ -38,7 +40,13 @@ export class VillageScene extends Scene {
     private tooltipBg!: GameObjects.Rectangle;
     private tooltipTitle!: GameObjects.Text;
     private tooltipDesc!: GameObjects.Text;
-    private wanderers: GameObjects.Image[] = [];
+    private wanderingNPCs: { npcId: NpcId; sprite: GameObjects.Image; homeTile: { x: number; y: number }; indicator: GameObjects.Text }[] = [];
+
+    // NPC dialogue
+    private dialogueSystem!: DialogueSystem;
+    private dialogueOverlayItems: GameObjects.GameObject[] = [];
+    private dialogueOverlayVisible = false;
+    private typewriterEvent: Phaser.Time.TimerEvent | null = null;
 
     // Camera drag state
     private isDragging = false;
@@ -73,6 +81,7 @@ export class VillageScene extends Scene {
 
         const state = loadState();
         this.villageProgress = state.village;
+        this.dialogueSystem = new DialogueSystem();
 
         this.buildCollisionMap();
         this.renderGround();
@@ -533,6 +542,7 @@ export class VillageScene extends Scene {
 
     // ─── Travel overlay ───
     private toggleTravelOverlay() {
+        if (this.dialogueOverlayVisible) this.closeNpcDialogue();
         if (this.travelOverlayVisible) {
             this.hideTravelOverlay();
         } else {
@@ -768,49 +778,186 @@ export class VillageScene extends Scene {
 
     // ─── Wandering NPCs ───
     private placeWanderingNPCs() {
-        const npcDefs = [
-            { key: 'villager_farmer', startTile: { x: 7, y: 8 } },
-            { key: 'villager_guard',  startTile: { x: 11, y: 10 } },
-            { key: 'villager_merchant', startTile: { x: 8, y: 12 } },
-        ];
+        const npcIds: NpcId[] = ['farmer', 'guard', 'merchant'];
 
-        for (const def of npcDefs) {
-            const { x, y } = this.tileToScreen(def.startTile.x, def.startTile.y);
-            const npc = this.add.image(x, y - 10, def.key)
-                .setDepth(def.startTile.y * 10 + 4)
-                .setScale(0.9);
+        for (const npcId of npcIds) {
+            const config = NPC_CONFIGS[npcId];
+            const { x, y } = this.tileToScreen(config.homeTile.x, config.homeTile.y);
 
-            this.wanderers.push(npc);
-            this.wanderNPC(npc, def.startTile);
+            const sprite = this.add.image(x, y - 10, config.spriteKey)
+                .setDepth(config.homeTile.y * 10 + 4)
+                .setScale(0.9)
+                .setInteractive(
+                    new Phaser.Geom.Rectangle(-8, -12, 40, 52),
+                    Phaser.Geom.Rectangle.Contains
+                );
+
+            // Exclamation indicator
+            const indicator = this.add.text(x, y - 32, '!', {
+                fontFamily: 'Georgia, serif',
+                fontSize: '14px',
+                color: '#FFD700',
+                stroke: '#000000',
+                strokeThickness: 3,
+                fontStyle: 'bold',
+            }).setOrigin(0.5).setDepth(config.homeTile.y * 10 + 5);
+
+            // Hover effects
+            sprite.on('pointerover', () => {
+                sprite.setScale(1.0);
+                this.showTooltip(sprite.x, sprite.y - 40, config.displayName, config.title);
+            });
+            sprite.on('pointerout', () => {
+                sprite.setScale(0.9);
+                this.hideTooltip();
+            });
+            sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+                pointer.event.stopPropagation();
+                this.hideTooltip();
+                this.openNpcDialogue(npcId);
+            });
+
+            const npcData = { npcId, sprite, homeTile: config.homeTile, indicator };
+            this.wanderingNPCs.push(npcData);
+            this.wanderNPCWithIndicator(npcData);
         }
     }
 
-    private wanderNPC(npc: GameObjects.Image, home: { x: number; y: number }) {
+    private wanderNPCWithIndicator(npcData: { npcId: NpcId; sprite: GameObjects.Image; homeTile: { x: number; y: number }; indicator: GameObjects.Text }) {
         const wander = () => {
-            // Random tile near home
             const dx = Math.floor(Math.random() * 5) - 2;
             const dy = Math.floor(Math.random() * 5) - 2;
-            const targetTX = Phaser.Math.Clamp(home.x + dx, 5, 13);
-            const targetTY = Phaser.Math.Clamp(home.y + dy, 6, 13);
+            const targetTX = Phaser.Math.Clamp(npcData.homeTile.x + dx, 5, 13);
+            const targetTY = Phaser.Math.Clamp(npcData.homeTile.y + dy, 6, 13);
             const { x, y } = this.tileToScreen(targetTX, targetTY);
 
-            // Flip sprite based on direction
-            npc.setFlipX(x < npc.x);
+            npcData.sprite.setFlipX(x < npcData.sprite.x);
 
             this.tweens.add({
-                targets: npc,
+                targets: npcData.sprite,
                 x: x,
                 y: y - 10,
                 duration: 2000 + Math.random() * 3000,
                 ease: 'Sine.easeInOut',
+                onUpdate: () => {
+                    npcData.indicator.x = npcData.sprite.x;
+                    const bobOffset = Math.sin(this.time.now * 0.005) * 3;
+                    npcData.indicator.y = npcData.sprite.y - 22 + bobOffset;
+                },
                 onComplete: () => {
-                    // Pause, then wander again
+                    npcData.indicator.x = npcData.sprite.x;
+                    npcData.indicator.y = npcData.sprite.y - 22;
                     this.time.delayedCall(1000 + Math.random() * 4000, wander);
                 },
             });
         };
 
         this.time.delayedCall(Math.random() * 3000, wander);
+    }
+
+    // ─── NPC Dialogue Overlay ───
+    private openNpcDialogue(npcId: NpcId) {
+        if (this.travelOverlayVisible || this.dialogueOverlayVisible) return;
+
+        const line = this.dialogueSystem.selectDialogue(npcId, this.villageProgress);
+        if (!line) return;
+
+        this.dialogueOverlayVisible = true;
+        const config = NPC_CONFIGS[npcId];
+        const cam = this.cameras.main;
+        const items: GameObjects.GameObject[] = [];
+
+        const panelW = 340;
+        const panelH = 140;
+        const panelX = cam.width / 2;
+        const panelY = cam.height - 100;
+
+        // Background panel
+        const bg = this.add.rectangle(panelX, panelY, panelW, panelH, 0x1a1a2e, 0.95)
+            .setStrokeStyle(2, config.themeColor)
+            .setScrollFactor(0)
+            .setDepth(2800)
+            .setInteractive();
+        items.push(bg);
+
+        // NPC name
+        const nameText = this.add.text(panelX - panelW / 2 + 16, panelY - panelH / 2 + 12, config.displayName, {
+            fontFamily: 'Georgia, serif',
+            fontSize: '15px',
+            color: '#FFD700',
+            fontStyle: 'bold',
+        }).setScrollFactor(0).setDepth(2801);
+        items.push(nameText);
+
+        // NPC title
+        const titleText = this.add.text(panelX - panelW / 2 + 16, panelY - panelH / 2 + 30, config.title, {
+            fontFamily: 'Arial',
+            fontSize: '10px',
+            color: '#999999',
+            fontStyle: 'italic',
+        }).setScrollFactor(0).setDepth(2801);
+        items.push(titleText);
+
+        // Separator line
+        const sep = this.add.rectangle(panelX, panelY - panelH / 2 + 46, panelW - 24, 1, config.themeColor, 0.3)
+            .setScrollFactor(0).setDepth(2801);
+        items.push(sep);
+
+        // Dialogue text (typewriter)
+        const dialogueText = this.add.text(panelX - panelW / 2 + 16, panelY - panelH / 2 + 54, '', {
+            fontFamily: 'Georgia, serif',
+            fontSize: '12px',
+            color: '#e0e0e0',
+            wordWrap: { width: panelW - 32 },
+            lineSpacing: 4,
+        }).setScrollFactor(0).setDepth(2801);
+        items.push(dialogueText);
+
+        // Typewriter effect
+        const fullText = line.text;
+        let charIndex = 0;
+        this.typewriterEvent = this.time.addEvent({
+            delay: 25,
+            repeat: fullText.length - 1,
+            callback: () => {
+                charIndex++;
+                dialogueText.setText(fullText.substring(0, charIndex));
+            },
+        });
+
+        // Close hint
+        const closeHint = this.add.text(panelX, panelY + panelH / 2 - 14, 'Click to close', {
+            fontFamily: 'Arial',
+            fontSize: '9px',
+            color: '#555555',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(2801);
+        items.push(closeHint);
+
+        // Click to skip typewriter or close
+        bg.on('pointerdown', () => {
+            if (charIndex < fullText.length) {
+                if (this.typewriterEvent) this.typewriterEvent.destroy();
+                this.typewriterEvent = null;
+                dialogueText.setText(fullText);
+                charIndex = fullText.length;
+            } else {
+                this.closeNpcDialogue();
+            }
+        });
+
+        this.dialogueOverlayItems = items;
+    }
+
+    private closeNpcDialogue() {
+        if (this.typewriterEvent) {
+            this.typewriterEvent.destroy();
+            this.typewriterEvent = null;
+        }
+        for (const item of this.dialogueOverlayItems) {
+            item.destroy();
+        }
+        this.dialogueOverlayItems = [];
+        this.dialogueOverlayVisible = false;
     }
 
     // ─── Clouds drifting across the sky ───
