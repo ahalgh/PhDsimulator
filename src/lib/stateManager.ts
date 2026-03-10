@@ -1,0 +1,131 @@
+import { GameState, VillageProgress, getDefaultGameState } from '../game/types/gameState';
+
+const STORAGE_KEY = 'phd-simulator-state';
+const CONFIG_KEY = 'phd-simulator-config';
+const FETCH_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+
+export function loadState(): GameState {
+    if (typeof window === 'undefined') return getDefaultGameState();
+
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return getDefaultGameState();
+
+        const parsed = JSON.parse(raw) as GameState;
+
+        // Version migration could go here
+        if (!parsed.version) {
+            return getDefaultGameState();
+        }
+
+        return parsed;
+    } catch {
+        return getDefaultGameState();
+    }
+}
+
+export function saveState(state: GameState): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+        console.error('Failed to save game state:', e);
+    }
+}
+
+export function saveConfig(config: GameState['config']): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+        localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+    } catch (e) {
+        console.error('Failed to save config:', e);
+    }
+}
+
+export function loadConfig(): GameState['config'] | null {
+    if (typeof window === 'undefined') return null;
+
+    try {
+        const raw = localStorage.getItem(CONFIG_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
+export function shouldFetch(state: GameState): boolean {
+    if (!state.lastFetchTimestamp) return true;
+
+    const lastFetch = new Date(state.lastFetchTimestamp).getTime();
+    const now = Date.now();
+
+    return now - lastFetch > FETCH_COOLDOWN_MS;
+}
+
+export interface StateDiff {
+    buildingUpgrades: Array<{
+        type: string;
+        oldLevel: number;
+        newLevel: number;
+    }>;
+    newHouses: number;
+    newDecorations: {
+        trees: number;
+        banners: number;
+        fountains: number;
+    };
+    newConferences: string[];
+    resourceChanges: {
+        researchPoints: number;
+        knowledge: number;
+        reputation: number;
+    };
+}
+
+export function getStateDiff(
+    oldVillage: VillageProgress | null,
+    newVillage: VillageProgress
+): StateDiff {
+    if (!oldVillage) {
+        return {
+            buildingUpgrades: [],
+            newHouses: 0,
+            newDecorations: { trees: 0, banners: 0, fountains: 0 },
+            newConferences: [],
+            resourceChanges: { researchPoints: 0, knowledge: 0, reputation: 0 },
+        };
+    }
+
+    const buildingUpgrades: StateDiff['buildingUpgrades'] = [];
+    const buildingTypes = ['library', 'laboratory', 'tower', 'workshop', 'castle'] as const;
+
+    for (const type of buildingTypes) {
+        const oldLevel = oldVillage.buildings[type].level;
+        const newLevel = newVillage.buildings[type].level;
+        if (newLevel > oldLevel) {
+            buildingUpgrades.push({ type, oldLevel, newLevel });
+        }
+    }
+
+    return {
+        buildingUpgrades,
+        newHouses: newVillage.buildings.houses.count - oldVillage.buildings.houses.count,
+        newDecorations: {
+            trees: newVillage.decorations.trees - oldVillage.decorations.trees,
+            banners: newVillage.decorations.banners - oldVillage.decorations.banners,
+            fountains: newVillage.decorations.fountains - oldVillage.decorations.fountains,
+        },
+        newConferences: newVillage.conferences
+            .filter(c => c.unlocked)
+            .filter(c => !oldVillage.conferences.find(oc => oc.name === c.name && oc.unlocked))
+            .map(c => c.name),
+        resourceChanges: {
+            researchPoints: newVillage.resources.researchPoints - oldVillage.resources.researchPoints,
+            knowledge: newVillage.resources.knowledge - oldVillage.resources.knowledge,
+            reputation: newVillage.resources.reputation - oldVillage.resources.reputation,
+        },
+    };
+}
