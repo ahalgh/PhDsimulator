@@ -26,11 +26,13 @@ export interface DecorationState {
     tileY: number;
 }
 
-export interface ConferenceRegion {
+export interface TravelDestination {
+    id: string;
     name: string;
-    theme: string;
+    fantasyName: string;
+    region: string;
     unlocked: boolean;
-    direction: 'north' | 'south' | 'east' | 'west';
+    conferenceKey: string;
 }
 
 export interface Resources {
@@ -54,7 +56,7 @@ export interface VillageProgress {
         banners: number;
         fountains: number;
     };
-    conferences: ConferenceRegion[];
+    travelDestinations: TravelDestination[];
     lastUpdated: string;
 }
 
@@ -128,14 +130,14 @@ export function getDefaultVillageProgress(): VillageProgress {
             houses: { count: 0 },
         },
         decorations: { trees: 0, banners: 0, fountains: 0 },
-        conferences: [],
+        travelDestinations: [],
         lastUpdated: new Date().toISOString(),
     };
 }
 
 export function getDefaultGameState(): GameState {
     return {
-        version: 1,
+        version: 2,
         config: getDefaultConfig(),
         village: getDefaultVillageProgress(),
         previousVillage: null,

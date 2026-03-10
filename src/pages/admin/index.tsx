@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 interface Config {
     githubUsername: string;
     orcidId: string;
+    googleScholarId: string;
     sheetsSpreadsheetId: string;
     manualMilestones: {
         qualifyingExam: boolean;
@@ -18,6 +19,7 @@ export default function AdminPage() {
     const [config, setConfig] = useState<Config>({
         githubUsername: '',
         orcidId: '',
+        googleScholarId: '',
         sheetsSpreadsheetId: '',
         manualMilestones: {
             qualifyingExam: false,
@@ -39,6 +41,7 @@ export default function AdminPage() {
                     setConfig({
                         githubUsername: state.config.githubUsername || '',
                         orcidId: state.config.orcidId || '',
+                        googleScholarId: state.config.googleScholarId || '',
                         sheetsSpreadsheetId: state.config.sheetsSpreadsheetId || '',
                         manualMilestones: state.config.manualMilestones || {
                             qualifyingExam: false,
@@ -117,6 +120,29 @@ export default function AdminPage() {
             }
         } catch {
             setTestResults(prev => ({ ...prev, orcid: 'Connection failed' }));
+        }
+    };
+
+    const testScholar = async () => {
+        if (!config.googleScholarId) {
+            setTestResults(prev => ({ ...prev, scholar: 'Enter an Author ID first' }));
+            return;
+        }
+        setTestResults(prev => ({ ...prev, scholar: 'Testing...' }));
+        try {
+            const res = await fetch(`/api/scholar?authorId=${encodeURIComponent(config.googleScholarId)}`);
+            if (res.ok) {
+                const data = await res.json();
+                setTestResults(prev => ({
+                    ...prev,
+                    scholar: `Found ${data.totalCitations} citations, h-index: ${data.hIndex}, i10-index: ${data.i10Index}`,
+                }));
+            } else {
+                const err = await res.json();
+                setTestResults(prev => ({ ...prev, scholar: `Error: ${err.error}` }));
+            }
+        } catch {
+            setTestResults(prev => ({ ...prev, scholar: 'Connection failed' }));
         }
     };
 
@@ -257,6 +283,28 @@ export default function AdminPage() {
                         Test Connection
                     </button>
                     {testResults.orcid && <p style={styles.testResult}>{testResults.orcid}</p>}
+                </div>
+
+                {/* Google Scholar */}
+                <div style={styles.section}>
+                    <div style={styles.sectionTitle}>Google Scholar</div>
+                    <label style={styles.label}>
+                        Google Scholar Author ID (from URL: scholar.google.com/citations?user=<b>THIS_PART</b>)
+                    </label>
+                    <input
+                        style={styles.input}
+                        type="text"
+                        value={config.googleScholarId}
+                        onChange={e => setConfig({ ...config, googleScholarId: e.target.value })}
+                        placeholder="e.g., dkAoREEAAAAJ"
+                    />
+                    <button style={styles.button} onClick={testScholar}>
+                        Test Connection
+                    </button>
+                    {testResults.scholar && <p style={styles.testResult}>{testResults.scholar}</p>}
+                    <p style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                        Requires SERPAPI_KEY in server environment. Powers trees and reputation.
+                    </p>
                 </div>
 
                 {/* Google Sheets */}

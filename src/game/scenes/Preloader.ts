@@ -70,6 +70,10 @@ export class Preloader extends Scene {
         this.load.svg('deco_banner', 'decorations/banner_01.svg', { width: 40, height: 50 });
         this.load.svg('deco_fountain', 'decorations/fountain_01.svg', { width: 50, height: 50 });
 
+        // Dock and ship
+        this.load.svg('tile_dock', 'tiles/dock.svg', { width: 64, height: 32 });
+        this.load.svg('deco_ship', 'decorations/ship.svg', { width: 64, height: 96 });
+
         // Characters
         this.load.svg('scholar', 'characters/scholar.svg', { width: 32, height: 48 });
         this.load.svg('villager_farmer', 'characters/villager_farmer.svg', { width: 24, height: 36 });

@@ -1,7 +1,7 @@
 import { Scene, GameObjects } from 'phaser';
 import { EventBus } from '../EventBus';
-import { BuildingType, VillageProgress, getDefaultVillageProgress } from '../types/gameState';
-import { BUILDING_CONFIGS, VILLAGE_LAYOUT } from '../data/buildingConfig';
+import { BuildingType, VillageProgress, TravelDestination, getDefaultVillageProgress } from '../types/gameState';
+import { BUILDING_CONFIGS, VILLAGE_LAYOUT, TRAVEL_DESTINATIONS, TravelDestinationConfig } from '../data/buildingConfig';
 import { loadState, getStateDiff } from '../../lib/stateManager';
 
 interface PlacedBuilding {
@@ -55,6 +55,11 @@ export class VillageScene extends Scene {
     private occupiedTiles!: Set<string>;
     private idleBobTween: Phaser.Tweens.Tween | null = null;
 
+    // Ship & travel overlay
+    private shipSprite!: GameObjects.Image;
+    private travelOverlayItems: GameObjects.GameObject[] = [];
+    private travelOverlayVisible = false;
+
     // Audio
     private bgm: Phaser.Sound.BaseSound | null = null;
     private musicStarted = false;
@@ -75,7 +80,7 @@ export class VillageScene extends Scene {
         this.placeBuildings();
         this.placeDataDecorations();
         this.placeScholar();
-        this.placeConferenceRegions();
+        this.placeDockAndShip();
         this.placeWanderingNPCs();
         this.spawnClouds();
         this.createTooltip();
@@ -105,8 +110,7 @@ export class VillageScene extends Scene {
 
     // ─── Collision map ───
     private buildCollisionMap() {
-        const { gridWidth, gridHeight, plots, conferenceRegions } = VILLAGE_LAYOUT;
-        const conf = conferenceRegions[0];
+        const { gridWidth, gridHeight, plots, dock } = VILLAGE_LAYOUT;
         this.occupiedTiles = new Set<string>();
 
         // Mark ALL tiles as occupied first, then carve out walkable areas
@@ -126,21 +130,6 @@ export class VillageScene extends Scene {
             }
         }
 
-        // Carve out conference region
-        for (let ty = 0; ty < gridHeight; ty++) {
-            for (let tx = 0; tx < gridWidth; tx++) {
-                const confDist = Math.sqrt((tx - conf.centerX) ** 2 + (ty - conf.centerY) ** 2);
-                if (confDist <= conf.radius) {
-                    this.occupiedTiles.delete(`${tx},${ty}`);
-                }
-            }
-        }
-
-        // Carve out bridge
-        for (let bx = conf.bridge.fromX; bx <= conf.bridge.toX; bx++) {
-            this.occupiedTiles.delete(`${bx},${conf.bridge.y}`);
-        }
-
         // Re-block building plots
         for (const pos of Object.values(plots)) {
             this.occupiedTiles.add(`${pos.tileX},${pos.tileY}`);
@@ -156,9 +145,9 @@ export class VillageScene extends Scene {
             this.occupiedTiles.add(`${plot.tileX},${plot.tileY}`);
         }
 
-        // Fountain and conference landmark
+        // Fountain and dock
         this.occupiedTiles.add('9,9');
-        this.occupiedTiles.add(`${conf.landmark.tileX},${conf.landmark.tileY}`);
+        this.occupiedTiles.add(`${dock.tileX},${dock.tileY}`);
     }
 
     private isWalkable(tx: number, ty: number): boolean {
@@ -182,26 +171,14 @@ export class VillageScene extends Scene {
     }
 
     private getTileType(tx: number, ty: number, rng: () => number): string {
-        const { gridWidth, gridHeight, conferenceRegions } = VILLAGE_LAYOUT;
+        const { gridWidth, gridHeight, dock } = VILLAGE_LAYOUT;
 
         // Village island center
         const vcx = 9, vcy = 9;
         const villageDist = Math.sqrt((tx - vcx) ** 2 + (ty - vcy) ** 2);
 
-        // Conference region (Atlantia)
-        const conf = conferenceRegions[0];
-        const confDist = Math.sqrt((tx - conf.centerX) ** 2 + (ty - conf.centerY) ** 2);
-
-        // Bridge connecting village to conference region
-        const onBridge = ty >= conf.bridge.y - 1 && ty <= conf.bridge.y + 1 &&
-                         tx >= conf.bridge.fromX && tx <= conf.bridge.toX;
-        const onBridgeCenter = ty === conf.bridge.y &&
-                               tx >= conf.bridge.fromX && tx <= conf.bridge.toX;
-        if (onBridgeCenter) return 'tile_bridge';
-        if (onBridge && ty !== conf.bridge.y) {
-            // Water alongside the bridge
-            return 'tile_water';
-        }
+        // Dock tile
+        if (tx === dock.tileX && ty === dock.tileY) return 'tile_dock';
 
         // ─── Village island ───
         if (villageDist <= 8) {
@@ -245,25 +222,6 @@ export class VillageScene extends Scene {
             return 'tile_grass';
         }
 
-        // ─── Conference region (Atlantia — aquatic theme) ───
-        if (confDist <= conf.radius + 1) {
-            // Shore edge
-            if (confDist > conf.radius) return rng() > 0.5 ? 'tile_sand' : 'tile_water';
-            if (confDist > conf.radius - 0.5) return 'tile_sand';
-
-            // Stone plaza center
-            if (confDist <= 1.5) return 'tile_stone_moss';
-
-            // Path from bridge to center
-            if (ty === conf.centerY && tx >= conf.bridge.toX && tx <= conf.centerX) return 'tile_path';
-
-            // Aquatic-themed terrain
-            const r = rng();
-            if (r < 0.15) return 'tile_stone_moss';
-            if (r < 0.25) return 'tile_sand';
-            return 'tile_grass';
-        }
-
         // ─── Global water border ───
         const edgeDist = Math.min(tx, ty, gridWidth - 1 - tx, gridHeight - 1 - ty);
         if (edgeDist === 0) return 'tile_water_deep';
@@ -274,15 +232,13 @@ export class VillageScene extends Scene {
 
     // ─── Ambient decorations (always present, not data-driven) ───
     private placeAmbientDecorations() {
-        const { gridHeight, conferenceRegions } = VILLAGE_LAYOUT;
+        const { gridHeight, gridWidth } = VILLAGE_LAYOUT;
         const vcx = 9, vcy = 9;
-        const conf = conferenceRegions[0];
         const rng = seededRandom(123);
 
         for (let ty = 2; ty < gridHeight - 2; ty++) {
-            for (let tx = 2; tx < 28; tx++) {
+            for (let tx = 2; tx < gridWidth - 2; tx++) {
                 const villageDist = Math.sqrt((tx - vcx) ** 2 + (ty - vcy) ** 2);
-                const confDist = Math.sqrt((tx - conf.centerX) ** 2 + (ty - conf.centerY) ** 2);
                 const r = rng();
 
                 // Village island decorations
@@ -293,16 +249,6 @@ export class VillageScene extends Scene {
                         } else if (r < 0.4) {
                             this.placeSmallDeco(tx, ty, rng);
                         }
-                    }
-                    continue;
-                }
-
-                // Conference region decorations (scattered coral-themed)
-                if (confDist < conf.radius && confDist >= 2) {
-                    if (r < 0.2) {
-                        this.placeTree(tx, ty, rng);
-                    } else if (r < 0.3) {
-                        this.placeSmallDeco(tx, ty, rng);
                     }
                 }
             }
@@ -519,81 +465,236 @@ export class VillageScene extends Scene {
         });
     }
 
-    // ─── Conference regions ───
-    private placeConferenceRegions() {
-        const { conferenceRegions } = VILLAGE_LAYOUT;
-        const conf = conferenceRegions[0]; // Atlantia
+    // ─── Dock and Ship ───
+    private placeDockAndShip() {
+        const { dock } = VILLAGE_LAYOUT;
 
-        // Floating banner above the region
-        const bannerPos = this.tileToScreen(conf.centerX, conf.centerY);
-        const bannerText = this.add.text(bannerPos.x, bannerPos.y - 70, conf.name, {
-            fontFamily: 'Georgia, serif',
-            fontSize: '20px',
-            color: '#7DD3FC',
-            stroke: '#0C4A6E',
-            strokeThickness: 4,
-            fontStyle: 'bold',
-        }).setOrigin(0.5).setDepth(1300);
+        // Place ship sprite in the water offshore
+        const { x: sx, y: sy } = this.tileToScreen(dock.shipTileX, dock.shipTileY);
+        this.shipSprite = this.add.image(sx, sy - 32, 'deco_ship')
+            .setDepth(dock.shipTileY * 10 + 5)
+            .setInteractive(
+                new Phaser.Geom.Rectangle(-16, -16, 96, 128),
+                Phaser.Geom.Rectangle.Contains
+            );
+        this.shipSprite.input!.cursor = 'pointer';
 
-        // Gentle float animation on the banner
+        // Gentle bobbing animation
         this.tweens.add({
-            targets: bannerText,
-            y: bannerText.y - 5,
-            duration: 2500,
+            targets: this.shipSprite,
+            y: this.shipSprite.y - 4,
+            duration: 2000,
             ease: 'Sine.easeInOut',
             yoyo: true,
             repeat: -1,
         });
 
-        // Landmark building at center (reuse castle sprite with aquatic tint)
-        const { x: lx, y: ly } = this.tileToScreen(conf.landmark.tileX, conf.landmark.tileY);
-        const landmark = this.add.image(lx, ly - 32, 'tower_lv3')
-            .setDepth(conf.landmark.tileY * 10 + 5)
-            .setTint(0x7DD3FC)
-            .setInteractive({ useHandCursor: true });
+        // Ship label
+        const shipLabel = this.add.text(sx, sy - 80, 'The Voyager', {
+            fontFamily: 'Georgia, serif',
+            fontSize: '13px',
+            color: '#FFD700',
+            stroke: '#000000',
+            strokeThickness: 3,
+        }).setOrigin(0.5).setDepth(dock.shipTileY * 10 + 6).setAlpha(0);
 
-        landmark.on('pointerover', () => {
-            landmark.setScale(1.08);
-            this.showTooltip(lx, ly - 100, 'The Spire of Atlantia', 'A monument to conferences attended');
+        this.shipSprite.on('pointerover', () => {
+            this.shipSprite.setScale(1.08);
+            shipLabel.setAlpha(1);
+            this.showTooltip(sx, sy - 100, 'The Voyager', 'Click to open the travel map');
         });
-        landmark.on('pointerout', () => {
-            landmark.setScale(1.0);
+
+        this.shipSprite.on('pointerout', () => {
+            this.shipSprite.setScale(1.0);
+            shipLabel.setAlpha(0);
             this.hideTooltip();
         });
 
-        // Decorative fountain in the region
-        const { x: fx, y: fy } = this.tileToScreen(conf.centerX - 1, conf.centerY + 1);
-        const regionFountain = this.add.image(fx, fy - 16, 'deco_fountain')
-            .setDepth((conf.centerY + 1) * 10 + 4)
-            .setTint(0x7DD3FC);
+        this.shipSprite.on('pointerdown', () => {
+            this.hideTooltip();
+            this.toggleTravelOverlay();
+        });
 
+        // Torch at dock
+        const { x: dx, y: dy } = this.tileToScreen(dock.tileX, dock.tileY);
+        const dockTorch = this.add.image(dx + 10, dy - 14, 'deco_torch')
+            .setDepth(dock.tileY * 10 + 4);
         this.tweens.add({
-            targets: regionFountain,
+            targets: dockTorch,
+            scaleX: { from: 0.95, to: 1.05 },
+            scaleY: { from: 0.95, to: 1.05 },
             alpha: { from: 0.85, to: 1 },
-            scaleY: { from: 0.97, to: 1.03 },
-            duration: 1200,
+            duration: 350,
             ease: 'Sine.easeInOut',
             yoyo: true,
             repeat: -1,
         });
+    }
 
-        // Torches at bridge entrance and exit
-        const bridgeStart = this.tileToScreen(conf.bridge.fromX, conf.bridge.y);
-        const bridgeEnd = this.tileToScreen(conf.bridge.toX, conf.bridge.y);
-        for (const pos of [bridgeStart, bridgeEnd]) {
-            const torch = this.add.image(pos.x + 10, pos.y - 14, 'deco_torch')
-                .setDepth(conf.bridge.y * 10 + 4);
-            this.tweens.add({
-                targets: torch,
-                scaleX: { from: 0.95, to: 1.05 },
-                scaleY: { from: 0.95, to: 1.05 },
-                alpha: { from: 0.85, to: 1 },
-                duration: 300 + Math.random() * 200,
-                ease: 'Sine.easeInOut',
-                yoyo: true,
-                repeat: -1,
-            });
+    // ─── Travel overlay ───
+    private toggleTravelOverlay() {
+        if (this.travelOverlayVisible) {
+            this.hideTravelOverlay();
+        } else {
+            this.showTravelOverlay();
         }
+    }
+
+    private showTravelOverlay() {
+        this.travelOverlayVisible = true;
+        const cam = this.cameras.main;
+        const w = cam.width;
+        const h = cam.height;
+        const items: GameObjects.GameObject[] = [];
+
+        // Dark backdrop
+        const backdrop = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.8)
+            .setScrollFactor(0).setDepth(3000)
+            .setInteractive();
+
+        // Clicking backdrop closes overlay
+        backdrop.on('pointerdown', () => this.hideTravelOverlay());
+        items.push(backdrop);
+
+        // Title (below HUD bar at ~30px)
+        const title = this.add.text(w / 2, 60, 'Sea Chart of Atlantis', {
+            fontFamily: 'Georgia, serif',
+            fontSize: '22px',
+            color: '#FFD700',
+            stroke: '#000000',
+            strokeThickness: 4,
+            fontStyle: 'bold',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3001);
+        items.push(title);
+
+        // Home node (Atlantis)
+        const centerX = w / 2;
+        const centerY = h / 2 + 10;
+        const homeDot = this.add.circle(centerX, centerY, 16, 0xFFD700)
+            .setScrollFactor(0).setDepth(3002);
+        const homeLabel = this.add.text(centerX, centerY + 24, 'Atlantis', {
+            fontFamily: 'Georgia, serif', fontSize: '12px', color: '#FFD700',
+            stroke: '#000', strokeThickness: 2,
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3002);
+        items.push(homeDot, homeLabel);
+
+        // Destination nodes arranged in a circle
+        const destinations = this.villageProgress.travelDestinations;
+        const allDests = TRAVEL_DESTINATIONS;
+        const nodeRadius = Math.min(w, h) * 0.32;
+
+        allDests.forEach((destConfig, i) => {
+            const angle = (i / allDests.length) * Math.PI * 2 - Math.PI / 2;
+            const nx = centerX + Math.cos(angle) * nodeRadius;
+            const ny = centerY + Math.sin(angle) * nodeRadius;
+            const unlocked = destinations.find(d => d.id === destConfig.id);
+
+            // Dashed line from center to node
+            const line = this.add.graphics().setScrollFactor(0).setDepth(3001);
+            line.lineStyle(1, unlocked ? 0xFFD700 : 0x333333, unlocked ? 0.5 : 0.2);
+            const steps = 16;
+            for (let s = 0; s < steps; s += 2) {
+                const t1 = s / steps;
+                const t2 = (s + 1) / steps;
+                line.moveTo(
+                    centerX + (nx - centerX) * t1,
+                    centerY + (ny - centerY) * t1
+                );
+                line.lineTo(
+                    centerX + (nx - centerX) * t2,
+                    centerY + (ny - centerY) * t2
+                );
+            }
+            line.strokePath();
+            items.push(line);
+
+            // Node circle
+            const nodeColor = unlocked ? destConfig.themeColor : 0x333333;
+            const node = this.add.circle(nx, ny, 12, nodeColor)
+                .setScrollFactor(0).setDepth(3002);
+            if (unlocked) {
+                node.setInteractive({ useHandCursor: true });
+                node.on('pointerover', () => node.setScale(1.25));
+                node.on('pointerout', () => node.setScale(1.0));
+                node.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+                    pointer.event.stopPropagation();
+                    this.showDestinationPopup(unlocked, destConfig);
+                });
+            } else {
+                node.setAlpha(0.4);
+            }
+            items.push(node);
+
+            // Label
+            const label = this.add.text(nx, ny + 18, destConfig.fantasyName, {
+                fontFamily: 'Georgia, serif', fontSize: '9px',
+                color: unlocked ? '#ffffff' : '#555555',
+                stroke: '#000', strokeThickness: 2,
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(3002);
+            items.push(label);
+
+            // Lock icon or checkmark
+            if (!unlocked) {
+                const lockIcon = this.add.text(nx, ny - 1, '?', {
+                    fontFamily: 'Arial', fontSize: '12px', color: '#555555',
+                    fontStyle: 'bold',
+                }).setOrigin(0.5).setScrollFactor(0).setDepth(3003);
+                items.push(lockIcon);
+            }
+        });
+
+        // Close hint
+        const closeHint = this.add.text(w / 2, h - 30, 'Click anywhere to close', {
+            fontFamily: 'Arial', fontSize: '11px', color: '#666666',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3001);
+        items.push(closeHint);
+
+        this.travelOverlayItems = items;
+    }
+
+    private showDestinationPopup(dest: TravelDestination, config: TravelDestinationConfig) {
+        const cam = this.cameras.main;
+        const popupItems: GameObjects.GameObject[] = [];
+
+        const bg = this.add.rectangle(cam.width / 2, cam.height / 2, 280, 130, 0x1a1a2e, 0.95)
+            .setStrokeStyle(2, config.themeColor)
+            .setScrollFactor(0).setDepth(3100);
+        popupItems.push(bg);
+
+        const titleText = this.add.text(cam.width / 2, cam.height / 2 - 40, dest.fantasyName, {
+            fontFamily: 'Georgia, serif', fontSize: '18px',
+            color: '#FFD700', fontStyle: 'bold',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3101);
+        popupItems.push(titleText);
+
+        const confText = this.add.text(cam.width / 2, cam.height / 2 - 15, `Conference: ${dest.name}`, {
+            fontFamily: 'Arial', fontSize: '12px', color: '#aaaaaa',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3101);
+        popupItems.push(confText);
+
+        const descText = this.add.text(cam.width / 2, cam.height / 2 + 5, config.description, {
+            fontFamily: 'Arial', fontSize: '11px', color: '#cccccc',
+            fontStyle: 'italic',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3101);
+        popupItems.push(descText);
+
+        const unlockText = this.add.text(cam.width / 2, cam.height / 2 + 30, 'Destination unlocked!', {
+            fontFamily: 'Georgia, serif', fontSize: '13px', color: '#66BB6A',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3101);
+        popupItems.push(unlockText);
+
+        // Auto-dismiss after 3 seconds
+        this.time.delayedCall(3000, () => {
+            for (const item of popupItems) item.destroy();
+        });
+    }
+
+    private hideTravelOverlay() {
+        for (const item of this.travelOverlayItems) {
+            item.destroy();
+        }
+        this.travelOverlayItems = [];
+        this.travelOverlayVisible = false;
     }
 
     // ─── Scholar character ───

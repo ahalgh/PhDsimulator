@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { IRefPhaserGame, PhaserGame } from './PhaserGame';
 import { VillageScene } from './game/scenes/VillageScene';
 import { loadState, saveState, shouldFetch } from './lib/stateManager';
-import { calculateProgress, GitHubData, SheetData } from './lib/progressCalculator';
+import { calculateProgress, GitHubData, OrcidData, ScholarData, SheetData } from './lib/progressCalculator';
 
 function App() {
     const phaserRef = useRef<IRefPhaserGame | null>(null);
@@ -25,6 +25,8 @@ function App() {
 
             try {
                 let githubData: GitHubData | null = null;
+                let orcidData: OrcidData | null = null;
+                let scholarData: ScholarData | null = null;
                 let sheetData: SheetData | null = null;
 
                 // Fetch GitHub data if username is configured
@@ -34,6 +36,26 @@ function App() {
                         if (res.ok) githubData = await res.json();
                     } catch (e) {
                         console.warn('GitHub fetch failed:', e);
+                    }
+                }
+
+                // Fetch ORCID data if configured
+                if (state.config.orcidId) {
+                    try {
+                        const res = await fetch(`/api/orcid?orcidId=${encodeURIComponent(state.config.orcidId)}`);
+                        if (res.ok) orcidData = await res.json();
+                    } catch (e) {
+                        console.warn('ORCID fetch failed:', e);
+                    }
+                }
+
+                // Fetch Google Scholar data if configured
+                if (state.config.googleScholarId) {
+                    try {
+                        const res = await fetch(`/api/scholar?authorId=${encodeURIComponent(state.config.googleScholarId)}`);
+                        if (res.ok) scholarData = await res.json();
+                    } catch (e) {
+                        console.warn('Scholar fetch failed:', e);
                     }
                 }
 
@@ -48,7 +70,7 @@ function App() {
                 }
 
                 // Calculate new progress
-                const newProgress = calculateProgress(githubData, null, null, sheetData);
+                const newProgress = calculateProgress(githubData, orcidData, scholarData, sheetData);
 
                 // Save state with new progress
                 state.previousVillage = state.village;

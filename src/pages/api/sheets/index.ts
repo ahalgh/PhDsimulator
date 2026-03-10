@@ -5,7 +5,7 @@ interface SheetsResponse {
     coursesCompleted: number;
     skillsLearned: number;
     milestonesCompleted: number;
-    conferences: Array<{ name: string; theme: string }>;
+    conferences: Array<{ name: string; theme: string; location?: string }>;
 }
 
 export default async function handler(
@@ -53,12 +53,13 @@ export default async function handler(
         const statusIdx = findColumnIndex(headers, ['status', 'done', 'completed', 'complete']);
         const typeIdx = findColumnIndex(headers, ['type', 'category', 'kind']);
         const nameIdx = findColumnIndex(headers, ['name', 'task', 'title', 'item', 'description']);
+        const locationIdx = findColumnIndex(headers, ['location', 'city', 'place', 'venue']);
 
         let tasksCompleted = 0;
         let coursesCompleted = 0;
         let skillsLearned = 0;
         let milestonesCompleted = 0;
-        const conferences: Array<{ name: string; theme: string }> = [];
+        const conferences: Array<{ name: string; theme: string; location?: string }> = [];
 
         // Parse data rows
         for (let i = 1; i < rows.length; i++) {
@@ -68,6 +69,7 @@ export default async function handler(
             const status = statusIdx >= 0 ? row[statusIdx]?.toLowerCase().trim() : '';
             const type = typeIdx >= 0 ? row[typeIdx]?.toLowerCase().trim() : '';
             const name = nameIdx >= 0 ? row[nameIdx]?.trim() : '';
+            const location = locationIdx >= 0 ? row[locationIdx]?.trim() : undefined;
 
             const isCompleted = ['done', 'complete', 'completed', 'true', 'yes', 'x', '1'].includes(status);
 
@@ -80,8 +82,12 @@ export default async function handler(
                 skillsLearned++;
             } else if (type.includes('milestone') || type.includes('major')) {
                 milestonesCompleted++;
-            } else if (type.includes('conference') || type.includes('conf')) {
-                conferences.push({ name: name || `Conference ${conferences.length + 1}`, theme: 'forest' });
+            } else if (type.includes('conference') || type.includes('conf') || type.includes('internship')) {
+                conferences.push({
+                    name: name || `Conference ${conferences.length + 1}`,
+                    theme: 'forest',
+                    location: location || undefined,
+                });
             } else {
                 tasksCompleted++;
             }

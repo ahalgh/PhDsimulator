@@ -13,9 +13,43 @@ export function loadState(): GameState {
 
         const parsed = JSON.parse(raw) as GameState;
 
-        // Version migration could go here
         if (!parsed.version) {
             return getDefaultGameState();
+        }
+
+        // Migrate v1 → v2: conferences → travelDestinations
+        if (parsed.version === 1) {
+            const village = parsed.village as any;
+            if (village?.conferences) {
+                village.travelDestinations = village.conferences.map((c: any) => ({
+                    id: c.name?.toLowerCase().replace(/\s+/g, '-') || 'unknown',
+                    name: c.name || '',
+                    fantasyName: c.name || '',
+                    region: 'any',
+                    unlocked: c.unlocked ?? true,
+                    conferenceKey: c.name || '',
+                }));
+                delete village.conferences;
+            } else if (!village?.travelDestinations) {
+                village.travelDestinations = [];
+            }
+            if (parsed.previousVillage) {
+                const prev = parsed.previousVillage as any;
+                if (prev.conferences) {
+                    prev.travelDestinations = prev.conferences.map((c: any) => ({
+                        id: c.name?.toLowerCase().replace(/\s+/g, '-') || 'unknown',
+                        name: c.name || '',
+                        fantasyName: c.name || '',
+                        region: 'any',
+                        unlocked: c.unlocked ?? true,
+                        conferenceKey: c.name || '',
+                    }));
+                    delete prev.conferences;
+                } else if (!prev.travelDestinations) {
+                    prev.travelDestinations = [];
+                }
+            }
+            parsed.version = 2;
         }
 
         return parsed;
@@ -77,7 +111,7 @@ export interface StateDiff {
         banners: number;
         fountains: number;
     };
-    newConferences: string[];
+    newDestinations: string[];
     resourceChanges: {
         researchPoints: number;
         knowledge: number;
@@ -94,7 +128,7 @@ export function getStateDiff(
             buildingUpgrades: [],
             newHouses: 0,
             newDecorations: { trees: 0, banners: 0, fountains: 0 },
-            newConferences: [],
+            newDestinations: [],
             resourceChanges: { researchPoints: 0, knowledge: 0, reputation: 0 },
         };
     }
@@ -118,10 +152,10 @@ export function getStateDiff(
             banners: newVillage.decorations.banners - oldVillage.decorations.banners,
             fountains: newVillage.decorations.fountains - oldVillage.decorations.fountains,
         },
-        newConferences: newVillage.conferences
-            .filter(c => c.unlocked)
-            .filter(c => !oldVillage.conferences.find(oc => oc.name === c.name && oc.unlocked))
-            .map(c => c.name),
+        newDestinations: newVillage.travelDestinations
+            .filter(d => d.unlocked)
+            .filter(d => !oldVillage.travelDestinations.find(od => od.id === d.id && od.unlocked))
+            .map(d => d.fantasyName),
         resourceChanges: {
             researchPoints: newVillage.resources.researchPoints - oldVillage.resources.researchPoints,
             knowledge: newVillage.resources.knowledge - oldVillage.resources.knowledge,

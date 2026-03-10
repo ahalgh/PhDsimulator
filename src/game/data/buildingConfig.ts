@@ -87,9 +87,9 @@ export function getDecorationCount(rawCount: number, per: number): number {
     return Math.floor(rawCount / per);
 }
 
-// Expanded map: main village (left) + conference regions (east)
+// Village map: Atlantis island
 export const VILLAGE_LAYOUT = {
-    gridWidth: 30,
+    gridWidth: 20,
     gridHeight: 18,
     tileWidth: 64,
     tileHeight: 32,
@@ -115,7 +115,15 @@ export const VILLAGE_LAYOUT = {
         { tileX: 9, tileY: 10 },
     ],
 
-    // Decoration zones (expanded for larger map)
+    // Dock and ship positions on the southeast coast
+    dock: {
+        tileX: 14,
+        tileY: 13,
+        shipTileX: 16,
+        shipTileY: 14,
+    },
+
+    // Decoration zones
     decorationZones: {
         trees: [
             // Northern forest edge
@@ -141,22 +149,90 @@ export const VILLAGE_LAYOUT = {
             { tileX: 9, tileY: 9 },
         ],
     },
-
-    // Conference regions — new explorable islands connected by bridges
-    conferenceRegions: [
-        {
-            id: 'atlantia',
-            name: 'Atlantia',
-            // Island center and bounds (within the 30x18 grid)
-            centerX: 24,
-            centerY: 9,
-            radius: 4, // tiles from center that are land
-            // Bridge from main village to this region
-            bridge: { fromX: 16, toX: 21, y: 9 },
-            // Landmark building position
-            landmark: { tileX: 24, tileY: 9 },
-            // Theme affects terrain colors
-            theme: 'aquatic' as const,
-        },
-    ],
 } as const;
+
+// Travel destination configs — map conferences/internships to fantasy locations
+export interface TravelDestinationConfig {
+    id: string;
+    fantasyName: string;
+    region: string;
+    description: string;
+    themeColor: number;
+    conferencePatterns: string[];
+    locationPatterns: string[];
+}
+
+export const TRAVEL_DESTINATIONS: TravelDestinationConfig[] = [
+    {
+        id: 'bayou-landing',
+        fantasyName: 'Bayou Landing',
+        region: 'north-america',
+        description: 'A misty port in the southern bayous',
+        themeColor: 0x7B1FA2,
+        conferencePatterns: ['neurips', 'nips'],
+        locationPatterns: ['new orleans', 'louisiana'],
+    },
+    {
+        id: 'alpine-spire',
+        fantasyName: 'Alpine Spire',
+        region: 'europe',
+        description: 'A crystalline citadel high in the mountains',
+        themeColor: 0x1565C0,
+        conferencePatterns: ['iclr'],
+        locationPatterns: ['vienna', 'austria', 'singapore'],
+    },
+    {
+        id: 'pacific-pavilion',
+        fantasyName: 'Pacific Pavilion',
+        region: 'north-america',
+        description: 'A grand hall overlooking the western sea',
+        themeColor: 0x00897B,
+        conferencePatterns: ['icml'],
+        locationPatterns: ['honolulu', 'hawaii', 'baltimore'],
+    },
+    {
+        id: 'cedar-haven',
+        fantasyName: 'Cedar Haven',
+        region: 'north-america',
+        description: 'A lodge nestled among ancient redwoods',
+        themeColor: 0x2E7D32,
+        conferencePatterns: ['cvpr'],
+        locationPatterns: ['seattle', 'nashville', 'vancouver'],
+    },
+    {
+        id: 'sakura-isle',
+        fantasyName: 'Sakura Isle',
+        region: 'asia',
+        description: 'An island of cherry blossoms and ancient temples',
+        themeColor: 0xE91E63,
+        conferencePatterns: ['acl', 'emnlp'],
+        locationPatterns: ['tokyo', 'bangkok', 'japan', 'korea'],
+    },
+    {
+        id: 'coral-reach',
+        fantasyName: 'Coral Reach',
+        region: 'north-america',
+        description: 'A vibrant reef city beneath the southern stars',
+        themeColor: 0xFF6F00,
+        conferencePatterns: ['aaai'],
+        locationPatterns: ['washington', 'phoenix', 'philadelphia'],
+    },
+    {
+        id: 'ivory-docks',
+        fantasyName: 'Ivory Docks',
+        region: 'europe',
+        description: 'A bustling port of commerce and knowledge',
+        themeColor: 0x6D4C41,
+        conferencePatterns: ['eccv', 'iccv'],
+        locationPatterns: ['milan', 'glasgow', 'paris', 'amsterdam'],
+    },
+    {
+        id: 'scholar-port',
+        fantasyName: 'Scholar Port',
+        region: 'any',
+        description: 'A harbor for visiting scholars and interns',
+        themeColor: 0x546E7A,
+        conferencePatterns: [],
+        locationPatterns: [],
+    },
+];

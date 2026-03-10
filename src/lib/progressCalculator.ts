@@ -1,6 +1,6 @@
-import { VillageProgress } from '../game/types/gameState';
+import { VillageProgress, TravelDestination } from '../game/types/gameState';
 import { BuildingType } from '../game/types/gameState';
-import { getLevelForCount, getHouseCount, getDecorationCount } from '../game/data/buildingConfig';
+import { getLevelForCount, getHouseCount, getDecorationCount, TRAVEL_DESTINATIONS } from '../game/data/buildingConfig';
 import { RESOURCE_MULTIPLIERS, DECORATION_THRESHOLDS } from '../game/data/resourceConfig';
 
 export interface GitHubData {
@@ -24,7 +24,7 @@ export interface SheetData {
     coursesCompleted: number;
     skillsLearned: number;
     milestonesCompleted: number;
-    conferences: Array<{ name: string; theme: string }>;
+    conferences: Array<{ name: string; theme: string; location?: string }>;
 }
 
 export function calculateProgress(
@@ -66,14 +66,40 @@ export function calculateProgress(
     const banners = getDecorationCount(gh.totalPRsMerged, DECORATION_THRESHOLDS.bannersPerPRs);
     const fountains = getDecorationCount(sc.hIndex, DECORATION_THRESHOLDS.fountainsPerHIndex);
 
-    // Map conferences to regions
-    const directions: Array<'north' | 'south' | 'east' | 'west'> = ['north', 'east', 'south', 'west'];
-    const conferences = sh.conferences.map((conf, i) => ({
-        name: conf.name,
-        theme: conf.theme || 'forest',
-        unlocked: true,
-        direction: directions[i % directions.length],
-    }));
+    // Map conferences/internships to travel destinations
+    const travelDestinations: TravelDestination[] = [];
+    const matchedIds = new Set<string>();
+
+    for (const conf of sh.conferences) {
+        const nameLower = conf.name.toLowerCase();
+        const locLower = (conf.location || '').toLowerCase();
+
+        // Find best matching destination by conference name patterns first, then location
+        let matched = TRAVEL_DESTINATIONS.find(dest =>
+            dest.conferencePatterns.some(p => nameLower.includes(p))
+        );
+        if (!matched && locLower) {
+            matched = TRAVEL_DESTINATIONS.find(dest =>
+                dest.locationPatterns.some(p => locLower.includes(p))
+            );
+        }
+        // Fall back to catch-all
+        if (!matched) {
+            matched = TRAVEL_DESTINATIONS.find(d => d.id === 'scholar-port')!;
+        }
+
+        if (!matchedIds.has(matched.id)) {
+            matchedIds.add(matched.id);
+            travelDestinations.push({
+                id: matched.id,
+                name: conf.name,
+                fantasyName: matched.fantasyName,
+                region: matched.region,
+                unlocked: true,
+                conferenceKey: conf.name,
+            });
+        }
+    }
 
     return {
         resources: { researchPoints, knowledge, reputation },
@@ -86,7 +112,7 @@ export function calculateProgress(
             houses: { count: houseCount },
         },
         decorations: { trees, banners, fountains },
-        conferences,
+        travelDestinations,
         lastUpdated: new Date().toISOString(),
     };
 }
