@@ -73,9 +73,26 @@ export class UIScene extends Scene {
 
         // Controls hint (bottom left)
         this.add.text(10, this.scale.height - 10,
-            'Arrow keys to move | Scroll to zoom | Click NPCs & buildings | Click ship to travel',
+            'Arrow keys to move | Scroll to zoom | Click NPCs & buildings | Tab for progress | Ship to travel',
             { fontFamily: 'Arial', fontSize: '11px', color: '#666666' }
         ).setOrigin(0, 1).setScrollFactor(0).setDepth(100);
+
+        // Dashboard toggle button (top right, before mute)
+        const dashBtn = this.add.text(
+            this.scale.width - 80, 8, '\u2261',
+            {
+                fontFamily: 'Arial',
+                fontSize: '20px',
+                color: '#FFD700',
+                fontStyle: 'bold',
+                backgroundColor: 'rgba(0,0,0,0.4)',
+                padding: { x: 6, y: 2 },
+            }
+        ).setScrollFactor(0).setDepth(100).setInteractive({ useHandCursor: true });
+
+        dashBtn.on('pointerdown', () => EventBus.emit('toggle-dashboard'));
+        dashBtn.on('pointerover', () => dashBtn.setAlpha(0.7));
+        dashBtn.on('pointerout', () => dashBtn.setAlpha(1));
 
         // Mute toggle button (top right)
         const isMuted = localStorage.getItem('phd-sim-muted') === 'true';

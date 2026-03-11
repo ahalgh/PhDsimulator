@@ -68,6 +68,10 @@ export class VillageScene extends Scene {
     private travelOverlayItems: GameObjects.GameObject[] = [];
     private travelOverlayVisible = false;
 
+    // Dashboard overlay
+    private dashboardOverlayItems: GameObjects.GameObject[] = [];
+    private dashboardOverlayVisible = false;
+
     // Audio
     private bgm: Phaser.Sound.BaseSound | null = null;
     private musicStarted = false;
@@ -103,6 +107,7 @@ export class VillageScene extends Scene {
         }
 
         this.scene.launch('UIScene', { progress: this.villageProgress });
+        EventBus.on('toggle-dashboard', () => this.toggleDashboard());
         EventBus.emit('current-scene-ready', this);
     }
 
@@ -543,6 +548,7 @@ export class VillageScene extends Scene {
     // ─── Travel overlay ───
     private toggleTravelOverlay() {
         if (this.dialogueOverlayVisible) this.closeNpcDialogue();
+        if (this.dashboardOverlayVisible) this.hideDashboard();
         if (this.travelOverlayVisible) {
             this.hideTravelOverlay();
         } else {
@@ -857,7 +863,7 @@ export class VillageScene extends Scene {
 
     // ─── NPC Dialogue Overlay ───
     private openNpcDialogue(npcId: NpcId) {
-        if (this.travelOverlayVisible || this.dialogueOverlayVisible) return;
+        if (this.travelOverlayVisible || this.dialogueOverlayVisible || this.dashboardOverlayVisible) return;
 
         const line = this.dialogueSystem.selectDialogue(npcId, this.villageProgress);
         if (!line) return;
@@ -958,6 +964,223 @@ export class VillageScene extends Scene {
         }
         this.dialogueOverlayItems = [];
         this.dialogueOverlayVisible = false;
+    }
+
+    // ─── Progress Dashboard Overlay ───
+    private toggleDashboard() {
+        if (this.dialogueOverlayVisible) this.closeNpcDialogue();
+        if (this.travelOverlayVisible) this.hideTravelOverlay();
+        if (this.dashboardOverlayVisible) {
+            this.hideDashboard();
+        } else {
+            this.showDashboard();
+        }
+    }
+
+    private showDashboard() {
+        this.dashboardOverlayVisible = true;
+        const cam = this.cameras.main;
+        const w = cam.width;
+        const h = cam.height;
+        const items: GameObjects.GameObject[] = [];
+        const state = loadState();
+        const config = state.config;
+        const vp = this.villageProgress;
+
+        // Backdrop
+        const backdrop = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.8)
+            .setScrollFactor(0).setDepth(3000).setInteractive();
+        backdrop.on('pointerdown', () => this.hideDashboard());
+        items.push(backdrop);
+
+        // Title
+        const title = this.add.text(w / 2, 40, '═══  Village Progress  ═══', {
+            fontFamily: 'Georgia, serif', fontSize: '20px', color: '#FFD700',
+            fontStyle: 'bold', stroke: '#000000', strokeThickness: 2,
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3001);
+        items.push(title);
+
+        // ── Left column: Buildings ──
+        const leftX = 80;
+        const colW = 280;
+        let yPos = 90;
+
+        const sectionLabel = this.add.text(leftX, yPos, 'BUILDINGS', {
+            fontFamily: 'Arial', fontSize: '11px', color: '#888888', fontStyle: 'bold',
+        }).setScrollFactor(0).setDepth(3001);
+        items.push(sectionLabel);
+        yPos += 22;
+
+        const buildingTypes: Array<{ type: string; color: number; unit: string }> = [
+            { type: 'library', color: 0xFFD700, unit: 'publications' },
+            { type: 'laboratory', color: 0x42A5F5, unit: 'commits' },
+            { type: 'tower', color: 0xCE93D8, unit: 'courses' },
+            { type: 'workshop', color: 0xFF9800, unit: 'skills' },
+            { type: 'castle', color: 0x78909C, unit: 'milestones' },
+        ];
+
+        for (const bt of buildingTypes) {
+            const bConfig = BUILDING_CONFIGS[bt.type as BuildingType];
+            const bState = vp.buildings[bt.type as keyof typeof vp.buildings];
+            if (!bConfig || !bState || !('level' in bState)) continue;
+
+            const level = bState.level;
+            const rawCount = bState.rawCount;
+            const thresholds = bConfig.levelThresholds;
+            const maxLevel = bConfig.maxLevel;
+
+            // Label + level
+            const labelText = this.add.text(leftX, yPos, bConfig.label, {
+                fontFamily: 'Georgia, serif', fontSize: '13px', color: '#e0e0e0', fontStyle: 'bold',
+            }).setScrollFactor(0).setDepth(3001);
+            items.push(labelText);
+
+            const lvText = this.add.text(leftX + colW, yPos, `Lv ${level}/${maxLevel}`, {
+                fontFamily: 'Arial', fontSize: '12px', color: '#aaaaaa',
+            }).setOrigin(1, 0).setScrollFactor(0).setDepth(3001);
+            items.push(lvText);
+            yPos += 20;
+
+            // Progress bar
+            const barW = 200;
+            const barH = 8;
+            let progress: number;
+            if (level >= maxLevel) {
+                progress = 1;
+            } else {
+                const prev = thresholds[level - 1] ?? 0;
+                const next = thresholds[level] ?? prev;
+                progress = next === prev ? 1 : Math.min(1, (rawCount - prev) / (next - prev));
+            }
+
+            const barBg = this.add.rectangle(leftX + barW / 2, yPos + barH / 2, barW, barH, 0x333333)
+                .setScrollFactor(0).setDepth(3001);
+            items.push(barBg);
+
+            if (progress > 0) {
+                const fillW = Math.max(2, barW * progress);
+                const fillColor = level >= maxLevel ? 0xFFD700 : bt.color;
+                const barFill = this.add.rectangle(leftX + fillW / 2, yPos + barH / 2, fillW, barH, fillColor)
+                    .setScrollFactor(0).setDepth(3002);
+                items.push(barFill);
+            }
+
+            // Count text
+            const nextThreshold = level >= maxLevel ? rawCount : (thresholds[level] ?? rawCount);
+            const countStr = level >= maxLevel
+                ? `${rawCount} ${bt.unit} (MAX)`
+                : `${rawCount}/${nextThreshold} ${bt.unit}`;
+            const countText = this.add.text(leftX + barW + 10, yPos - 2, countStr, {
+                fontFamily: 'Arial', fontSize: '10px', color: '#999999',
+            }).setScrollFactor(0).setDepth(3001);
+            items.push(countText);
+            yPos += 28;
+        }
+
+        // ── Right column: Stats ──
+        const rightX = 440;
+        let rY = 90;
+
+        // Resources section
+        const resLabel = this.add.text(rightX, rY, 'RESOURCES', {
+            fontFamily: 'Arial', fontSize: '11px', color: '#888888', fontStyle: 'bold',
+        }).setScrollFactor(0).setDepth(3001);
+        items.push(resLabel);
+        rY += 22;
+
+        const rpText = this.add.text(rightX, rY, `Research Points: ${vp.resources.researchPoints}`, {
+            fontFamily: 'Arial', fontSize: '12px', color: '#42A5F5',
+        }).setScrollFactor(0).setDepth(3001);
+        items.push(rpText);
+        rY += 18;
+
+        const knText = this.add.text(rightX, rY, `Knowledge: ${vp.resources.knowledge}`, {
+            fontFamily: 'Arial', fontSize: '12px', color: '#AB47BC',
+        }).setScrollFactor(0).setDepth(3001);
+        items.push(knText);
+        rY += 18;
+
+        const repText = this.add.text(rightX, rY, `Reputation: ${vp.resources.reputation}`, {
+            fontFamily: 'Arial', fontSize: '12px', color: '#FFD700',
+        }).setScrollFactor(0).setDepth(3001);
+        items.push(repText);
+        rY += 30;
+
+        // Village section
+        const vilLabel = this.add.text(rightX, rY, 'VILLAGE', {
+            fontFamily: 'Arial', fontSize: '11px', color: '#888888', fontStyle: 'bold',
+        }).setScrollFactor(0).setDepth(3001);
+        items.push(vilLabel);
+        rY += 22;
+
+        const statsLines = [
+            `Houses: ${vp.buildings.houses.count}`,
+            `Trees: ${vp.decorations.trees}`,
+            `Banners: ${vp.decorations.banners}`,
+            `Fountains: ${vp.decorations.fountains}`,
+        ];
+        for (const line of statsLines) {
+            const st = this.add.text(rightX, rY, line, {
+                fontFamily: 'Arial', fontSize: '12px', color: '#cccccc',
+            }).setScrollFactor(0).setDepth(3001);
+            items.push(st);
+            rY += 18;
+        }
+        rY += 12;
+
+        // Voyages section
+        const voyLabel = this.add.text(rightX, rY, 'VOYAGES', {
+            fontFamily: 'Arial', fontSize: '11px', color: '#888888', fontStyle: 'bold',
+        }).setScrollFactor(0).setDepth(3001);
+        items.push(voyLabel);
+        rY += 22;
+
+        const unlocked = vp.travelDestinations.filter(d => d.unlocked).length;
+        const voyText = this.add.text(rightX, rY, `${unlocked}/8 destinations discovered`, {
+            fontFamily: 'Arial', fontSize: '12px', color: '#cccccc',
+        }).setScrollFactor(0).setDepth(3001);
+        items.push(voyText);
+        rY += 30;
+
+        // Data sources section
+        const dsLabel = this.add.text(rightX, rY, 'DATA SOURCES', {
+            fontFamily: 'Arial', fontSize: '11px', color: '#888888', fontStyle: 'bold',
+        }).setScrollFactor(0).setDepth(3001);
+        items.push(dsLabel);
+        rY += 22;
+
+        const sources = [
+            { name: 'GitHub', connected: !!config.githubUsername },
+            { name: 'ORCID', connected: !!config.orcidId },
+            { name: 'Scholar', connected: !!config.googleScholarId },
+            { name: 'Sheets', connected: !!config.sheetsSpreadsheetId },
+        ];
+
+        for (const src of sources) {
+            const icon = src.connected ? '\u2713' : '\u2717';
+            const color = src.connected ? '#66BB6A' : '#EF5350';
+            const srcText = this.add.text(rightX, rY, `${icon} ${src.name}`, {
+                fontFamily: 'Arial', fontSize: '12px', color: color,
+            }).setScrollFactor(0).setDepth(3001);
+            items.push(srcText);
+            rY += 18;
+        }
+
+        // Close hint
+        const closeHint = this.add.text(w / 2, h - 30, 'Press Tab or click to close', {
+            fontFamily: 'Arial', fontSize: '11px', color: '#555555',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3001);
+        items.push(closeHint);
+
+        this.dashboardOverlayItems = items;
+    }
+
+    private hideDashboard() {
+        for (const item of this.dashboardOverlayItems) {
+            item.destroy();
+        }
+        this.dashboardOverlayItems = [];
+        this.dashboardOverlayVisible = false;
     }
 
     // ─── Clouds drifting across the sky ───
@@ -1098,6 +1321,17 @@ export class VillageScene extends Scene {
                 this.moveScholar(0, 1);
                 cam.startFollow(this.scholar, true, 0.08, 0.08);
             }
+        });
+
+        // Tab toggles dashboard, Escape closes overlays
+        this.input.keyboard!.on('keydown-TAB', (event: KeyboardEvent) => {
+            event.preventDefault();
+            this.toggleDashboard();
+        });
+        this.input.keyboard!.on('keydown-ESC', () => {
+            if (this.dashboardOverlayVisible) this.hideDashboard();
+            else if (this.travelOverlayVisible) this.hideTravelOverlay();
+            else if (this.dialogueOverlayVisible) this.closeNpcDialogue();
         });
     }
 
