@@ -1,5 +1,5 @@
 import Head from 'next/head';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface Config {
     githubUsername: string;
@@ -30,6 +30,12 @@ export default function AdminPage() {
 
     const [testResults, setTestResults] = useState<Record<string, string>>({});
     const [saved, setSaved] = useState(false);
+
+    // Data management state
+    const [importPreview, setImportPreview] = useState<any>(null);
+    const [importError, setImportError] = useState('');
+    const [syncing, setSyncing] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Load config from localStorage on mount
     useEffect(() => {
@@ -144,6 +150,129 @@ export default function AdminPage() {
         } catch {
             setTestResults(prev => ({ ...prev, scholar: 'Connection failed' }));
         }
+    };
+
+    // ── Data Management functions ──
+
+    const exportBackup = () => {
+        try {
+            const payload = {
+                _meta: {
+                    exportDate: new Date().toISOString(),
+                    exportVersion: 1,
+                    gameStateVersion: 2,
+                    source: 'phd-simulator',
+                },
+                gameState: JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'),
+                achievements: JSON.parse(localStorage.getItem('phd-sim-achievements') || 'null'),
+                dialogueSeen: JSON.parse(localStorage.getItem('phd-sim-dialogue-seen') || 'null'),
+                audioPrefs: { muted: localStorage.getItem('phd-sim-muted') === 'true' },
+            };
+
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `phd-simulator-backup-${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error('Export failed:', e);
+        }
+    };
+
+    const handleImportFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setImportError('');
+        setImportPreview(null);
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target?.result as string);
+
+                if (!data._meta || data._meta.source !== 'phd-simulator') {
+                    setImportError('Invalid file: not a PhD Simulator backup.');
+                    return;
+                }
+                if (data._meta.gameStateVersion > 2) {
+                    setImportError(`Incompatible version: file is v${data._meta.gameStateVersion}, app supports up to v2.`);
+                    return;
+                }
+                if (!data.gameState) {
+                    setImportError('Invalid file: missing game state data.');
+                    return;
+                }
+
+                setImportPreview(data);
+            } catch {
+                setImportError('Failed to parse file. Make sure it is valid JSON.');
+            }
+        };
+        reader.readAsText(file);
+        // Reset input so same file can be re-selected
+        event.target.value = '';
+    };
+
+    const applyImport = () => {
+        if (!importPreview) return;
+        try {
+            if (importPreview.gameState) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(importPreview.gameState));
+            }
+            if (importPreview.achievements) {
+                localStorage.setItem('phd-sim-achievements', JSON.stringify(importPreview.achievements));
+            }
+            if (importPreview.dialogueSeen) {
+                localStorage.setItem('phd-sim-dialogue-seen', JSON.stringify(importPreview.dialogueSeen));
+            }
+            if (importPreview.audioPrefs !== undefined) {
+                localStorage.setItem('phd-sim-muted', String(importPreview.audioPrefs?.muted ?? false));
+            }
+            setImportPreview(null);
+            window.location.reload();
+        } catch (e) {
+            setImportError('Failed to apply import: ' + (e as Error).message);
+        }
+    };
+
+    const handleSync = () => {
+        setSyncing(true);
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                const state = JSON.parse(raw);
+                state.lastFetchTimestamp = '';
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            }
+            window.location.href = '/';
+        } catch (e) {
+            console.error('Sync failed:', e);
+            setSyncing(false);
+        }
+    };
+
+    const getImportSummary = () => {
+        if (!importPreview) return null;
+        const gs = importPreview.gameState;
+        const cfg = gs?.config;
+        const achievements = importPreview.achievements;
+        const meta = importPreview._meta;
+
+        const sources: string[] = [];
+        if (cfg?.githubUsername) sources.push('GitHub');
+        if (cfg?.orcidId) sources.push('ORCID');
+        if (cfg?.googleScholarId) sources.push('Scholar');
+        if (cfg?.sheetsSpreadsheetId) sources.push('Sheets');
+
+        return {
+            exportDate: meta?.exportDate ? new Date(meta.exportDate).toLocaleString() : 'Unknown',
+            sources: sources.length > 0 ? sources.join(', ') : 'None',
+            achievementCount: achievements?.unlocked?.length ?? 0,
+        };
     };
 
     const styles = {
@@ -368,6 +497,81 @@ export default function AdminPage() {
                         />
                         Dissertation Defended
                     </label>
+                </div>
+
+                {/* Data Management */}
+                <div style={styles.section}>
+                    <div style={styles.sectionTitle}>Data Management</div>
+                    <p style={{ fontSize: '12px', color: '#888', marginBottom: '16px' }}>
+                        Export your village progress as a backup, import a previous backup, or force a data refresh.
+                    </p>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button style={styles.button} onClick={exportBackup}>
+                            Export Backup
+                        </button>
+                        <button style={styles.button} onClick={() => fileInputRef.current?.click()}>
+                            Import Backup
+                        </button>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".json"
+                            onChange={handleImportFile}
+                            style={{ display: 'none' }}
+                        />
+                        <button
+                            style={{ ...styles.button, opacity: syncing ? 0.6 : 1 }}
+                            onClick={handleSync}
+                            disabled={syncing}
+                        >
+                            {syncing ? 'Syncing...' : 'Sync Now'}
+                        </button>
+                    </div>
+
+                    {importError && (
+                        <p style={{ fontSize: '12px', color: '#EF5350', marginTop: '10px' }}>
+                            {importError}
+                        </p>
+                    )}
+
+                    {importPreview && (() => {
+                        const summary = getImportSummary();
+                        return (
+                            <div style={{
+                                marginTop: '16px',
+                                padding: '14px',
+                                backgroundColor: '#0d0d1a',
+                                borderRadius: '6px',
+                                border: '1px solid #333',
+                            }}>
+                                <div style={{ fontSize: '13px', color: '#FFD700', marginBottom: '10px', fontWeight: 'bold' }}>
+                                    Import Preview
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#ccc', lineHeight: '1.8' }}>
+                                    <div>Exported: {summary?.exportDate}</div>
+                                    <div>Data sources: {summary?.sources}</div>
+                                    <div>Achievements: {summary?.achievementCount} unlocked</div>
+                                </div>
+                                <p style={{ fontSize: '11px', color: '#FF9800', marginTop: '10px', marginBottom: '12px' }}>
+                                    This will replace all current game data. Make sure to export a backup first!
+                                </p>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button
+                                        style={{ ...styles.button, backgroundColor: '#1a3d0a', borderColor: '#FFD700' }}
+                                        onClick={applyImport}
+                                    >
+                                        Apply Import
+                                    </button>
+                                    <button
+                                        style={{ ...styles.button, borderColor: '#666', color: '#999' }}
+                                        onClick={() => setImportPreview(null)}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
 
                 {/* Save */}

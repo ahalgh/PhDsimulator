@@ -90,6 +90,17 @@ export function loadConfig(): GameState['config'] | null {
     }
 }
 
+export function clearFetchCooldown(): void {
+    if (typeof window === 'undefined') return;
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const state = JSON.parse(raw) as GameState;
+        state.lastFetchTimestamp = '';
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch { /* ignore */ }
+}
+
 export function shouldFetch(state: GameState): boolean {
     if (!state.lastFetchTimestamp) return true;
 

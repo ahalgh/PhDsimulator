@@ -90,6 +90,13 @@ export class Preloader extends Scene {
     }
 
     create() {
+        // Generate particle dot texture (no external file needed)
+        const gfx = this.make.graphics({ x: 0, y: 0 });
+        gfx.fillStyle(0xffffff, 1);
+        gfx.fillCircle(4, 4, 4);
+        gfx.generateTexture('particle_dot', 8, 8);
+        gfx.destroy();
+
         this.scene.start('VillageScene');
     }
 }

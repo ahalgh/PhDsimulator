@@ -79,10 +79,10 @@ export class UIScene extends Scene {
             { fontFamily: 'Arial', fontSize: '11px', color: '#666666' }
         ).setOrigin(0, 1).setScrollFactor(0).setDepth(100);
 
-        // Trophy case button (top right, before dashboard)
+        // Trophy case button (top right)
         const achieveSystem = new AchievementSystem();
         const trophyBtn = this.add.text(
-            this.scale.width - 130, 8, '\u{1F3C6}',
+            this.scale.width - 165, 8, '\u{1F3C6}',
             {
                 fontFamily: 'Arial',
                 fontSize: '16px',
@@ -91,19 +91,19 @@ export class UIScene extends Scene {
             }
         ).setScrollFactor(0).setDepth(100).setInteractive({ useHandCursor: true });
 
-        trophyBtn.on('pointerdown', () => EventBus.emit('toggle-trophy-case'));
+        trophyBtn.on('pointerdown', () => { EventBus.emit('ui-click'); EventBus.emit('toggle-trophy-case'); });
         trophyBtn.on('pointerover', () => trophyBtn.setAlpha(0.7));
         trophyBtn.on('pointerout', () => trophyBtn.setAlpha(1));
 
         this.achievementCountText = this.add.text(
-            this.scale.width - 100, 14,
+            this.scale.width - 135, 14,
             `${achieveSystem.getUnlockedCount()}/${achieveSystem.getTotalCount()}`,
             { fontFamily: 'Arial', fontSize: '10px', color: '#FFD700' }
         ).setScrollFactor(0).setDepth(100);
 
-        // Dashboard toggle button (top right, before mute)
+        // Dashboard toggle button (top right)
         const dashBtn = this.add.text(
-            this.scale.width - 70, 8, '\u2261',
+            this.scale.width - 105, 8, '\u2261',
             {
                 fontFamily: 'Arial',
                 fontSize: '20px',
@@ -114,9 +114,28 @@ export class UIScene extends Scene {
             }
         ).setScrollFactor(0).setDepth(100).setInteractive({ useHandCursor: true });
 
-        dashBtn.on('pointerdown', () => EventBus.emit('toggle-dashboard'));
+        dashBtn.on('pointerdown', () => { EventBus.emit('ui-click'); EventBus.emit('toggle-dashboard'); });
         dashBtn.on('pointerover', () => dashBtn.setAlpha(0.7));
         dashBtn.on('pointerout', () => dashBtn.setAlpha(1));
+
+        // Settings gear button (top right, before mute)
+        const gearBtn = this.add.text(
+            this.scale.width - 70, 8, '\u2699',
+            {
+                fontFamily: 'Arial',
+                fontSize: '18px',
+                color: '#FFD700',
+                backgroundColor: 'rgba(0,0,0,0.4)',
+                padding: { x: 5, y: 3 },
+            }
+        ).setScrollFactor(0).setDepth(100).setInteractive({ useHandCursor: true });
+
+        gearBtn.on('pointerdown', () => {
+            EventBus.emit('ui-click');
+            window.location.href = '/admin';
+        });
+        gearBtn.on('pointerover', () => gearBtn.setAlpha(0.7));
+        gearBtn.on('pointerout', () => gearBtn.setAlpha(1));
 
         // Mute toggle button (top right)
         const isMuted = localStorage.getItem('phd-sim-muted') === 'true';
@@ -134,6 +153,7 @@ export class UIScene extends Scene {
         ).setScrollFactor(0).setDepth(100).setInteractive({ useHandCursor: true });
 
         muteBtn.on('pointerdown', () => {
+            EventBus.emit('ui-click');
             this.sound.mute = !this.sound.mute;
             muteBtn.setText(this.sound.mute ? 'M' : '\u266A');
             try {
@@ -148,6 +168,11 @@ export class UIScene extends Scene {
         EventBus.on('village-updated', (updatedProgress: VillageProgress) => {
             this.updateResources(updatedProgress.resources);
             this.refreshAchievementCount();
+            // Refresh last synced text
+            const lastUpdated = updatedProgress.lastUpdated
+                ? new Date(updatedProgress.lastUpdated).toLocaleDateString()
+                : 'Never';
+            this.lastUpdatedText.setText(`Last synced: ${lastUpdated}`);
         });
 
         EventBus.on('achievement-unlocked', () => {

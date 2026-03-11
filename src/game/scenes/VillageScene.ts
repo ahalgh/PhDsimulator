@@ -6,6 +6,8 @@ import { loadState, getStateDiff } from '../../lib/stateManager';
 import { NpcId, NPC_CONFIGS } from '../data/dialogueConfig';
 import { DialogueSystem } from '../systems/DialogueSystem';
 import { AchievementSystem } from '../systems/AchievementSystem';
+import { SoundEffects } from '../systems/SoundEffects';
+import { ParticleEffects } from '../systems/ParticleEffects';
 import { AchievementDefinition, ACHIEVEMENTS, CATEGORY_META, AchievementCategory, TIER_COLORS } from '../data/achievementConfig';
 
 interface PlacedBuilding {
@@ -91,9 +93,12 @@ export class VillageScene extends Scene {
     private buildingDetailVisible = false;
     private buildingDetailType: BuildingType | null = null;
 
-    // Audio
+    // Audio & effects
     private bgm: Phaser.Sound.BaseSound | null = null;
     private musicStarted = false;
+    private sfx!: SoundEffects;
+    private particles!: ParticleEffects;
+    private ambientGlowEmitters: GameObjects.Particles.ParticleEmitter[] = [];
 
     constructor() {
         super('VillageScene');
@@ -106,6 +111,8 @@ export class VillageScene extends Scene {
         this.villageProgress = state.village;
         this.dialogueSystem = new DialogueSystem();
         this.achievementSystem = new AchievementSystem();
+        this.sfx = new SoundEffects(this);
+        this.particles = new ParticleEffects(this);
 
         this.buildCollisionMap();
         this.renderGround();
@@ -130,6 +137,7 @@ export class VillageScene extends Scene {
         EventBus.on('toggle-dashboard', () => this.toggleDashboard());
         EventBus.on('toggle-trophy-case', () => this.toggleTrophyCase());
         EventBus.on('achievement-unlocked', (a: AchievementDefinition) => this.queueAchievementToast(a));
+        EventBus.on('ui-click', () => this.sfx.playClick());
 
         // Check achievements on initial load
         this.achievementSystem.checkAchievements(state.village, state.config);
@@ -372,6 +380,12 @@ export class VillageScene extends Scene {
 
     // ─── Buildings ───
     private placeBuildings() {
+        // Clean up old ambient glow emitters
+        for (const emitter of this.ambientGlowEmitters) {
+            emitter.destroy();
+        }
+        this.ambientGlowEmitters = [];
+
         const { plots } = VILLAGE_LAYOUT;
         const mainBuildingTypes = [
             BuildingType.CASTLE,
@@ -417,10 +431,17 @@ export class VillageScene extends Scene {
             sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
                 pointer.event.stopPropagation();
                 this.hideTooltip();
+                this.sfx.playClick();
                 this.showBuildingDetail(type);
             });
 
             this.buildings.push({ type, level, sprite, label, tileX: plot.tileX, tileY: plot.tileY });
+
+            // Max-level ambient glow
+            if (level === 5) {
+                const glowEmitter = this.particles.createAmbientGlow(x, y - 32, plot.tileY * 10 + 7);
+                this.ambientGlowEmitters.push(glowEmitter);
+            }
         }
 
         // Houses
@@ -451,6 +472,7 @@ export class VillageScene extends Scene {
             sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
                 pointer.event.stopPropagation();
                 this.hideTooltip();
+                this.sfx.playClick();
                 this.showBuildingDetail(BuildingType.HOUSE);
             });
 
@@ -573,6 +595,7 @@ export class VillageScene extends Scene {
 
         this.shipSprite.on('pointerdown', () => {
             this.hideTooltip();
+            this.sfx.playClick();
             this.toggleTravelOverlay();
         });
 
@@ -606,6 +629,7 @@ export class VillageScene extends Scene {
 
     private showTravelOverlay() {
         this.travelOverlayVisible = true;
+        this.sfx.playOpen();
         const cam = this.cameras.main;
         const w = cam.width;
         const h = cam.height;
@@ -754,6 +778,7 @@ export class VillageScene extends Scene {
     }
 
     private hideTravelOverlay() {
+        this.sfx.playClose();
         for (const item of this.travelOverlayItems) {
             item.destroy();
         }
@@ -868,6 +893,7 @@ export class VillageScene extends Scene {
             sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
                 pointer.event.stopPropagation();
                 this.hideTooltip();
+                this.sfx.playDialogue();
                 this.openNpcDialogue(npcId);
             });
 
@@ -1003,6 +1029,7 @@ export class VillageScene extends Scene {
     }
 
     private closeNpcDialogue() {
+        this.sfx.playClose();
         if (this.typewriterEvent) {
             this.typewriterEvent.destroy();
             this.typewriterEvent = null;
@@ -1028,6 +1055,7 @@ export class VillageScene extends Scene {
 
     private showDashboard() {
         this.dashboardOverlayVisible = true;
+        this.sfx.playOpen();
         const cam = this.cameras.main;
         const w = cam.width;
         const h = cam.height;
@@ -1214,6 +1242,40 @@ export class VillageScene extends Scene {
             items.push(srcText);
             rY += 18;
         }
+        rY += 12;
+
+        // Sync Now button
+        const syncBtn = this.add.text(rightX, rY, '\u21BB Sync Now', {
+            fontFamily: 'Arial', fontSize: '13px', color: '#FFD700',
+            backgroundColor: 'rgba(26,61,10,0.8)', padding: { x: 10, y: 6 },
+        }).setScrollFactor(0).setDepth(3001).setInteractive({ useHandCursor: true });
+
+        syncBtn.on('pointerdown', () => {
+            EventBus.emit('ui-click');
+            syncBtn.setText('\u21BB Syncing...');
+            syncBtn.setColor('#888888');
+            syncBtn.disableInteractive();
+            EventBus.emit('refresh-data');
+            this.time.delayedCall(3000, () => {
+                syncBtn.setText('\u21BB Sync Now');
+                syncBtn.setColor('#FFD700');
+                syncBtn.setInteractive({ useHandCursor: true });
+            });
+        });
+        syncBtn.on('pointerover', () => syncBtn.setAlpha(0.7));
+        syncBtn.on('pointerout', () => syncBtn.setAlpha(1));
+        items.push(syncBtn);
+
+        rY += 30;
+
+        // Settings link
+        const settingsLink = this.add.text(rightX, rY, '\u2699 Open Settings', {
+            fontFamily: 'Arial', fontSize: '12px', color: '#42A5F5',
+        }).setScrollFactor(0).setDepth(3001).setInteractive({ useHandCursor: true });
+        settingsLink.on('pointerdown', () => { window.location.href = '/admin'; });
+        settingsLink.on('pointerover', () => settingsLink.setColor('#90CAF9'));
+        settingsLink.on('pointerout', () => settingsLink.setColor('#42A5F5'));
+        items.push(settingsLink);
 
         // Close hint
         const closeHint = this.add.text(w / 2, h - 30, 'Press Tab or click to close', {
@@ -1225,6 +1287,7 @@ export class VillageScene extends Scene {
     }
 
     private hideDashboard() {
+        this.sfx.playClose();
         for (const item of this.dashboardOverlayItems) {
             item.destroy();
         }
@@ -1249,6 +1312,7 @@ export class VillageScene extends Scene {
 
         this.buildingDetailVisible = true;
         this.buildingDetailType = type;
+        this.sfx.playOpen();
 
         const cam = this.cameras.main;
         const w = cam.width;
@@ -1266,7 +1330,7 @@ export class VillageScene extends Scene {
         items.push(backdrop);
 
         const panelW = 380;
-        const panelH = type === BuildingType.HOUSE ? 240 : 320;
+        const panelH = type === BuildingType.HOUSE ? 260 : 340;
         const panelX = w / 2;
         const panelY = h / 2;
 
@@ -1521,18 +1585,30 @@ export class VillageScene extends Scene {
             connected = !!configValue;
         }
 
-        const icon = connected ? '\u2713' : '\u2717';
-        const color = connected ? '#66BB6A' : '#EF5350';
-        const statusStr = connected
-            ? `${icon} Connected via ${context.dataSource}`
-            : `${icon} Not connected \u2014 set up ${context.dataSource} in Admin`;
-        const statusText = this.add.text(leftEdge, yPos, statusStr, {
-            fontFamily: 'Arial', fontSize: '11px', color: color,
-        }).setScrollFactor(0).setDepth(2902);
-        items.push(statusText);
+        if (connected) {
+            const statusText = this.add.text(leftEdge, yPos, `\u2713 Connected via ${context.dataSource}`, {
+                fontFamily: 'Arial', fontSize: '11px', color: '#66BB6A',
+            }).setScrollFactor(0).setDepth(2902);
+            items.push(statusText);
+        } else {
+            const statusText = this.add.text(leftEdge, yPos, `\u2717 Not connected`, {
+                fontFamily: 'Arial', fontSize: '11px', color: '#EF5350',
+            }).setScrollFactor(0).setDepth(2902);
+            items.push(statusText);
+            yPos += 18;
+
+            const configLink = this.add.text(leftEdge + 10, yPos, `Configure ${context.dataSource} in Settings \u2192`, {
+                fontFamily: 'Arial', fontSize: '11px', color: '#42A5F5',
+            }).setScrollFactor(0).setDepth(2902).setInteractive({ useHandCursor: true });
+            configLink.on('pointerdown', () => { window.location.href = '/admin'; });
+            configLink.on('pointerover', () => configLink.setColor('#90CAF9'));
+            configLink.on('pointerout', () => configLink.setColor('#42A5F5'));
+            items.push(configLink);
+        }
     }
 
     private hideBuildingDetail() {
+        this.sfx.playClose();
         for (const item of this.buildingDetailItems) {
             item.destroy();
         }
@@ -1733,6 +1809,7 @@ export class VillageScene extends Scene {
 
             this.time.delayedCall(delay, () => {
                 this.cameras.main.pan(building.sprite.x, building.sprite.y, 600, 'Sine.easeInOut');
+                this.sfx.playUpgrade();
 
                 this.tweens.add({
                     targets: building.sprite,
@@ -1750,6 +1827,7 @@ export class VillageScene extends Scene {
                             duration: 500,
                             ease: 'Back.easeOut',
                         });
+                        this.particles.burstAt(building.sprite.x, building.sprite.y, 0xFFD700, 20);
                     },
                 });
 
@@ -1806,6 +1884,7 @@ export class VillageScene extends Scene {
 
     private showTrophyCase() {
         this.trophyCaseOverlayVisible = true;
+        this.sfx.playOpen();
         const cam = this.cameras.main;
         const w = cam.width;
         const h = cam.height;
@@ -1985,6 +2064,7 @@ export class VillageScene extends Scene {
     }
 
     private hideTrophyCase() {
+        this.sfx.playClose();
         for (const item of this.trophyCaseOverlayItems) {
             item.destroy();
         }
@@ -2008,6 +2088,7 @@ export class VillageScene extends Scene {
 
         this.isShowingToast = true;
         const achievement = this.achievementToastQueue.shift()!;
+        this.sfx.playAchievement();
         const cam = this.cameras.main;
 
         const toastW = 280;
@@ -2053,6 +2134,13 @@ export class VillageScene extends Scene {
             duration: 400,
             ease: 'Back.easeOut',
             onComplete: () => {
+                // Confetti burst at toast position
+                const tierConfettiColors: Record<string, number[]> = {
+                    bronze: [0xCD7F32, 0xDDA15E, 0xB87333],
+                    silver: [0xC0C0C0, 0xE8E8E8, 0xA9A9A9],
+                    gold: [0xFFD700, 0xFFF44F, 0xDAA520],
+                };
+                this.particles.confettiBurst(toastX, targetY, tierConfettiColors[achievement.tier] || tierConfettiColors.bronze);
                 // Hold for 3 seconds, then slide out
                 this.time.delayedCall(3000, () => {
                     this.tweens.add({
