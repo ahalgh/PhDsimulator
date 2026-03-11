@@ -1,7 +1,7 @@
 import { Scene, GameObjects } from 'phaser';
 import { EventBus } from '../EventBus';
 import { BuildingType, VillageProgress, TravelDestination, getDefaultVillageProgress } from '../types/gameState';
-import { BUILDING_CONFIGS, VILLAGE_LAYOUT, TRAVEL_DESTINATIONS, TravelDestinationConfig } from '../data/buildingConfig';
+import { BUILDING_CONFIGS, BUILDING_ACADEMIC_CONTEXT, VILLAGE_LAYOUT, TRAVEL_DESTINATIONS, TravelDestinationConfig } from '../data/buildingConfig';
 import { loadState, getStateDiff } from '../../lib/stateManager';
 import { NpcId, NPC_CONFIGS } from '../data/dialogueConfig';
 import { DialogueSystem } from '../systems/DialogueSystem';
@@ -85,6 +85,11 @@ export class VillageScene extends Scene {
     // Achievement toast queue
     private achievementToastQueue: AchievementDefinition[] = [];
     private isShowingToast = false;
+
+    // Building detail panel
+    private buildingDetailItems: GameObjects.GameObject[] = [];
+    private buildingDetailVisible = false;
+    private buildingDetailType: BuildingType | null = null;
 
     // Audio
     private bgm: Phaser.Sound.BaseSound | null = null;
@@ -409,6 +414,12 @@ export class VillageScene extends Scene {
                 this.hideTooltip();
             });
 
+            sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+                pointer.event.stopPropagation();
+                this.hideTooltip();
+                this.showBuildingDetail(type);
+            });
+
             this.buildings.push({ type, level, sprite, label, tileX: plot.tileX, tileY: plot.tileY });
         }
 
@@ -426,7 +437,22 @@ export class VillageScene extends Scene {
             );
             const sprite = this.add.image(x, y - 32, `house_lv${level}`)
                 .setDepth(plot.tileY * 10 + 5)
-                .setScale(0.85);
+                .setScale(0.85)
+                .setInteractive({ useHandCursor: true });
+
+            sprite.on('pointerover', () => {
+                sprite.setScale(0.92);
+                this.showTooltip(x, y - 100, 'Village House', `${this.villageProgress.buildings.houses.count} houses built`);
+            });
+            sprite.on('pointerout', () => {
+                sprite.setScale(0.85);
+                this.hideTooltip();
+            });
+            sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+                pointer.event.stopPropagation();
+                this.hideTooltip();
+                this.showBuildingDetail(BuildingType.HOUSE);
+            });
 
             this.buildings.push({
                 type: BuildingType.HOUSE, level, sprite,
@@ -570,6 +596,7 @@ export class VillageScene extends Scene {
     private toggleTravelOverlay() {
         if (this.dialogueOverlayVisible) this.closeNpcDialogue();
         if (this.dashboardOverlayVisible) this.hideDashboard();
+        if (this.buildingDetailVisible) this.hideBuildingDetail();
         if (this.travelOverlayVisible) {
             this.hideTravelOverlay();
         } else {
@@ -884,7 +911,7 @@ export class VillageScene extends Scene {
 
     // ─── NPC Dialogue Overlay ───
     private openNpcDialogue(npcId: NpcId) {
-        if (this.travelOverlayVisible || this.dialogueOverlayVisible || this.dashboardOverlayVisible || this.trophyCaseOverlayVisible) return;
+        if (this.travelOverlayVisible || this.dialogueOverlayVisible || this.dashboardOverlayVisible || this.trophyCaseOverlayVisible || this.buildingDetailVisible) return;
 
         const line = this.dialogueSystem.selectDialogue(npcId, this.villageProgress);
         if (!line) return;
@@ -991,6 +1018,7 @@ export class VillageScene extends Scene {
     private toggleDashboard() {
         if (this.dialogueOverlayVisible) this.closeNpcDialogue();
         if (this.travelOverlayVisible) this.hideTravelOverlay();
+        if (this.buildingDetailVisible) this.hideBuildingDetail();
         if (this.dashboardOverlayVisible) {
             this.hideDashboard();
         } else {
@@ -1204,6 +1232,315 @@ export class VillageScene extends Scene {
         this.dashboardOverlayVisible = false;
     }
 
+    // ─── Building Detail Panel ───
+    private showBuildingDetail(type: BuildingType) {
+        // Toggle off if same building clicked again
+        if (this.buildingDetailVisible && this.buildingDetailType === type) {
+            this.hideBuildingDetail();
+            return;
+        }
+
+        // Close any other overlays (mutual exclusion)
+        if (this.buildingDetailVisible) this.hideBuildingDetail();
+        if (this.dialogueOverlayVisible) this.closeNpcDialogue();
+        if (this.travelOverlayVisible) this.hideTravelOverlay();
+        if (this.dashboardOverlayVisible) this.hideDashboard();
+        if (this.trophyCaseOverlayVisible) this.hideTrophyCase();
+
+        this.buildingDetailVisible = true;
+        this.buildingDetailType = type;
+
+        const cam = this.cameras.main;
+        const w = cam.width;
+        const h = cam.height;
+        const items: GameObjects.GameObject[] = [];
+        const state = loadState();
+        const vp = this.villageProgress;
+        const bConfig = BUILDING_CONFIGS[type];
+        const context = BUILDING_ACADEMIC_CONTEXT[type];
+
+        // Semi-transparent backdrop (lighter than full-screen overlays)
+        const backdrop = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.5)
+            .setScrollFactor(0).setDepth(2900).setInteractive();
+        backdrop.on('pointerdown', () => this.hideBuildingDetail());
+        items.push(backdrop);
+
+        const panelW = 380;
+        const panelH = type === BuildingType.HOUSE ? 240 : 320;
+        const panelX = w / 2;
+        const panelY = h / 2;
+
+        // Panel background
+        const bg = this.add.rectangle(panelX, panelY, panelW, panelH, 0x1a1a2e, 0.95)
+            .setStrokeStyle(2, context.themeColor)
+            .setScrollFactor(0).setDepth(2901).setInteractive();
+        bg.on('pointerdown', (pointer: Phaser.Input.Pointer) => pointer.event.stopPropagation());
+        items.push(bg);
+
+        const leftEdge = panelX - panelW / 2 + 20;
+        const rightEdge = panelX + panelW / 2 - 20;
+        let yPos = panelY - panelH / 2 + 20;
+
+        if (type === BuildingType.HOUSE) {
+            this.renderHouseDetail(items, leftEdge, rightEdge, yPos, panelX, panelY, panelH, vp, state, context);
+        } else {
+            this.renderMainBuildingDetail(items, leftEdge, rightEdge, yPos, panelX, panelY, panelH, type, vp, state, bConfig, context);
+        }
+
+        // Close hint
+        const closeHint = this.add.text(panelX, panelY + panelH / 2 - 16, 'Click building or press ESC to close', {
+            fontFamily: 'Arial', fontSize: '9px', color: '#555555',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(2902);
+        items.push(closeHint);
+
+        this.buildingDetailItems = items;
+    }
+
+    private renderMainBuildingDetail(
+        items: GameObjects.GameObject[],
+        leftEdge: number, rightEdge: number, yPos: number,
+        panelX: number, panelY: number, panelH: number,
+        type: BuildingType,
+        vp: VillageProgress,
+        state: ReturnType<typeof loadState>,
+        bConfig: typeof BUILDING_CONFIGS[BuildingType],
+        context: typeof BUILDING_ACADEMIC_CONTEXT[BuildingType],
+    ) {
+        const bState = vp.buildings[type as keyof typeof vp.buildings];
+        if (!bState || !('level' in bState)) return;
+        const level = bState.level;
+        const rawCount = bState.rawCount;
+        const thresholds = bConfig.levelThresholds;
+        const maxLevel = bConfig.maxLevel;
+
+        // Header: level label + building name + level badge
+        const levelLabel = context.levelLabels[level - 1] || bConfig.label;
+        const headerText = this.add.text(leftEdge, yPos, levelLabel, {
+            fontFamily: 'Georgia, serif', fontSize: '16px', color: '#FFD700',
+            fontStyle: 'bold',
+        }).setScrollFactor(0).setDepth(2902);
+        items.push(headerText);
+
+        const lvBadge = this.add.text(rightEdge, yPos + 2, `Lv ${level}/${maxLevel}`, {
+            fontFamily: 'Arial', fontSize: '13px', color: '#aaaaaa',
+        }).setOrigin(1, 0).setScrollFactor(0).setDepth(2902);
+        items.push(lvBadge);
+        yPos += 22;
+
+        // Description
+        const descText = this.add.text(leftEdge, yPos, bConfig.description, {
+            fontFamily: 'Arial', fontSize: '11px', color: '#999999', fontStyle: 'italic',
+        }).setScrollFactor(0).setDepth(2902);
+        items.push(descText);
+        yPos += 28;
+
+        // ── PROGRESS section ──
+        const progressLabel = this.add.text(leftEdge, yPos, 'PROGRESS', {
+            fontFamily: 'Arial', fontSize: '10px', color: '#666666', fontStyle: 'bold',
+        }).setScrollFactor(0).setDepth(2902);
+        items.push(progressLabel);
+        yPos += 18;
+
+        // Progress bar
+        const barW = 220;
+        const barH = 8;
+        let progress: number;
+        if (level >= maxLevel) {
+            progress = 1;
+        } else {
+            const prev = thresholds[level - 1] ?? 0;
+            const next = thresholds[level] ?? prev;
+            progress = next === prev ? 1 : Math.min(1, (rawCount - prev) / (next - prev));
+        }
+
+        const barBg = this.add.rectangle(leftEdge + barW / 2, yPos + barH / 2, barW, barH, 0x333333)
+            .setScrollFactor(0).setDepth(2902);
+        items.push(barBg);
+
+        if (progress > 0) {
+            const fillW = Math.max(2, barW * progress);
+            const fillColor = level >= maxLevel ? 0xFFD700 : context.themeColor;
+            const barFill = this.add.rectangle(leftEdge + fillW / 2, yPos + barH / 2, fillW, barH, fillColor)
+                .setScrollFactor(0).setDepth(2903);
+            items.push(barFill);
+        }
+
+        // Count text next to progress bar
+        const nextThreshold = level >= maxLevel ? rawCount : (thresholds[level] ?? rawCount);
+        const countStr = level >= maxLevel
+            ? `${rawCount} ${context.metric} (MAX)`
+            : `${rawCount}/${nextThreshold} ${context.metric}`;
+        const countText = this.add.text(leftEdge + barW + 10, yPos - 2, countStr, {
+            fontFamily: 'Arial', fontSize: '10px', color: '#aaaaaa',
+        }).setScrollFactor(0).setDepth(2902);
+        items.push(countText);
+        yPos += 16;
+
+        // Next level hint
+        if (level < maxLevel) {
+            const nextLabel = context.levelLabels[level] || `Level ${level + 1}`;
+            const nextHint = this.add.text(leftEdge, yPos, `Next: ${nextLabel} at ${thresholds[level] ?? '?'} ${context.metric}`, {
+                fontFamily: 'Arial', fontSize: '10px', color: '#777777',
+            }).setScrollFactor(0).setDepth(2902);
+            items.push(nextHint);
+        }
+        yPos += 24;
+
+        // ── MILESTONES timeline ──
+        const msLabel = this.add.text(leftEdge, yPos, 'MILESTONES', {
+            fontFamily: 'Arial', fontSize: '10px', color: '#666666', fontStyle: 'bold',
+        }).setScrollFactor(0).setDepth(2902);
+        items.push(msLabel);
+        yPos += 20;
+
+        // Draw connected dots
+        const dotSpacing = 60;
+        const dotStartX = leftEdge + 20;
+        const dotY = yPos + 6;
+
+        for (let i = 0; i < maxLevel; i++) {
+            const cx = dotStartX + i * dotSpacing;
+            const reached = level > i;
+
+            // Connecting line to next dot
+            if (i < maxLevel - 1) {
+                const lineColor = level > i + 1 ? context.themeColor : 0x444444;
+                const line = this.add.rectangle(cx + dotSpacing / 2, dotY, dotSpacing - 12, 2, lineColor)
+                    .setScrollFactor(0).setDepth(2902);
+                items.push(line);
+            }
+
+            // Dot
+            const dotColor = reached ? context.themeColor : 0x444444;
+            const dot = this.add.circle(cx, dotY, 6, dotColor)
+                .setScrollFactor(0).setDepth(2903);
+            items.push(dot);
+
+            // Current level indicator
+            if (i === level - 1) {
+                const ring = this.add.circle(cx, dotY, 9)
+                    .setStrokeStyle(2, 0xFFFFFF)
+                    .setFillStyle(0x000000, 0)
+                    .setScrollFactor(0).setDepth(2903);
+                items.push(ring);
+            }
+
+            // Threshold number below dot
+            const threshText = this.add.text(cx, dotY + 14, `${thresholds[i]}`, {
+                fontFamily: 'Arial', fontSize: '9px', color: reached ? '#cccccc' : '#555555',
+            }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(2902);
+            items.push(threshText);
+
+            // Level label below threshold
+            const lvLabel = this.add.text(cx, dotY + 26, context.levelLabels[i], {
+                fontFamily: 'Arial', fontSize: '8px', color: reached ? '#999999' : '#444444',
+            }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(2902);
+            items.push(lvLabel);
+        }
+        yPos += 56;
+
+        // ── DATA SOURCE section ──
+        this.renderDataSourceStatus(items, leftEdge, yPos, type, state, context);
+    }
+
+    private renderHouseDetail(
+        items: GameObjects.GameObject[],
+        leftEdge: number, rightEdge: number, yPos: number,
+        panelX: number, panelY: number, panelH: number,
+        vp: VillageProgress,
+        state: ReturnType<typeof loadState>,
+        context: typeof BUILDING_ACADEMIC_CONTEXT[BuildingType],
+    ) {
+        const houseCount = vp.buildings.houses.count;
+
+        // Header
+        const headerText = this.add.text(leftEdge, yPos, 'Village Houses', {
+            fontFamily: 'Georgia, serif', fontSize: '16px', color: '#FFD700',
+            fontStyle: 'bold',
+        }).setScrollFactor(0).setDepth(2902);
+        items.push(headerText);
+
+        const countBadge = this.add.text(rightEdge, yPos + 2, `${houseCount} built`, {
+            fontFamily: 'Arial', fontSize: '13px', color: '#aaaaaa',
+        }).setOrigin(1, 0).setScrollFactor(0).setDepth(2902);
+        items.push(countBadge);
+        yPos += 22;
+
+        // Description
+        const descText = this.add.text(leftEdge, yPos, 'Short-term tasks completed by villagers', {
+            fontFamily: 'Arial', fontSize: '11px', color: '#999999', fontStyle: 'italic',
+        }).setScrollFactor(0).setDepth(2902);
+        items.push(descText);
+        yPos += 28;
+
+        // House info
+        const infoLabel = this.add.text(leftEdge, yPos, 'VILLAGE SIZE', {
+            fontFamily: 'Arial', fontSize: '10px', color: '#666666', fontStyle: 'bold',
+        }).setScrollFactor(0).setDepth(2902);
+        items.push(infoLabel);
+        yPos += 18;
+
+        // Visual house count
+        const maxHousePlots = VILLAGE_LAYOUT.housePlots.length;
+        const houseLine = this.add.text(leftEdge, yPos,
+            `${houseCount}/${maxHousePlots} house plots occupied`, {
+            fontFamily: 'Arial', fontSize: '12px', color: '#cccccc',
+        }).setScrollFactor(0).setDepth(2902);
+        items.push(houseLine);
+        yPos += 20;
+
+        const rateLine = this.add.text(leftEdge, yPos, '1 house per 10 completed tasks', {
+            fontFamily: 'Arial', fontSize: '10px', color: '#777777',
+        }).setScrollFactor(0).setDepth(2902);
+        items.push(rateLine);
+        yPos += 28;
+
+        // ── DATA SOURCE section ──
+        this.renderDataSourceStatus(items, leftEdge, yPos, BuildingType.HOUSE, state, context);
+    }
+
+    private renderDataSourceStatus(
+        items: GameObjects.GameObject[],
+        leftEdge: number, yPos: number,
+        type: BuildingType,
+        state: ReturnType<typeof loadState>,
+        context: typeof BUILDING_ACADEMIC_CONTEXT[BuildingType],
+    ) {
+        const dsLabel = this.add.text(leftEdge, yPos, 'DATA SOURCE', {
+            fontFamily: 'Arial', fontSize: '10px', color: '#666666', fontStyle: 'bold',
+        }).setScrollFactor(0).setDepth(2902);
+        items.push(dsLabel);
+        yPos += 18;
+
+        let connected = false;
+        if (type === BuildingType.CASTLE) {
+            // Castle uses manual milestones — always "available"
+            connected = true;
+        } else if (context.configKey) {
+            const configValue = state.config[context.configKey as keyof typeof state.config];
+            connected = !!configValue;
+        }
+
+        const icon = connected ? '\u2713' : '\u2717';
+        const color = connected ? '#66BB6A' : '#EF5350';
+        const statusStr = connected
+            ? `${icon} Connected via ${context.dataSource}`
+            : `${icon} Not connected \u2014 set up ${context.dataSource} in Admin`;
+        const statusText = this.add.text(leftEdge, yPos, statusStr, {
+            fontFamily: 'Arial', fontSize: '11px', color: color,
+        }).setScrollFactor(0).setDepth(2902);
+        items.push(statusText);
+    }
+
+    private hideBuildingDetail() {
+        for (const item of this.buildingDetailItems) {
+            item.destroy();
+        }
+        this.buildingDetailItems = [];
+        this.buildingDetailVisible = false;
+        this.buildingDetailType = null;
+    }
+
     // ─── Clouds drifting across the sky ───
     private spawnClouds() {
         const spawnCloud = () => {
@@ -1353,7 +1690,8 @@ export class VillageScene extends Scene {
             this.toggleTrophyCase();
         });
         this.input.keyboard!.on('keydown-ESC', () => {
-            if (this.dashboardOverlayVisible) this.hideDashboard();
+            if (this.buildingDetailVisible) this.hideBuildingDetail();
+            else if (this.dashboardOverlayVisible) this.hideDashboard();
             else if (this.travelOverlayVisible) this.hideTravelOverlay();
             else if (this.trophyCaseOverlayVisible) this.hideTrophyCase();
             else if (this.dialogueOverlayVisible) this.closeNpcDialogue();
@@ -1457,6 +1795,7 @@ export class VillageScene extends Scene {
         if (this.dialogueOverlayVisible) this.closeNpcDialogue();
         if (this.travelOverlayVisible) this.hideTravelOverlay();
         if (this.dashboardOverlayVisible) this.hideDashboard();
+        if (this.buildingDetailVisible) this.hideBuildingDetail();
         if (this.trophyCaseOverlayVisible) {
             this.hideTrophyCase();
         } else {

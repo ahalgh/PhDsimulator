@@ -67,6 +67,57 @@ export const BUILDING_CONFIGS: Record<BuildingType, BuildingConfig> = {
     },
 };
 
+export const BUILDING_ACADEMIC_CONTEXT: Record<BuildingType, {
+    dataSource: string;
+    metric: string;
+    configKey: string;
+    themeColor: number;
+    levelLabels: string[];
+}> = {
+    [BuildingType.LIBRARY]: {
+        dataSource: 'ORCID',
+        metric: 'publications',
+        configKey: 'orcidId',
+        themeColor: 0xFFD700,
+        levelLabels: ['Shelf', 'Reading Room', 'Archive', 'Grand Hall', 'Grand Library'],
+    },
+    [BuildingType.LABORATORY]: {
+        dataSource: 'GitHub',
+        metric: 'commits',
+        configKey: 'githubUsername',
+        themeColor: 0x42A5F5,
+        levelLabels: ['Workbench', 'Study', 'Lab', 'Research Center', 'Grand Laboratory'],
+    },
+    [BuildingType.TOWER]: {
+        dataSource: 'Google Sheets',
+        metric: 'courses completed',
+        configKey: 'sheetsSpreadsheetId',
+        themeColor: 0xCE93D8,
+        levelLabels: ['Watchtower', 'Lookout', 'Spire', 'Observatory', 'Tower of Knowledge'],
+    },
+    [BuildingType.WORKSHOP]: {
+        dataSource: 'Google Sheets',
+        metric: 'skills mastered',
+        configKey: 'sheetsSpreadsheetId',
+        themeColor: 0xFF9800,
+        levelLabels: ['Shed', 'Forge', 'Workshop', 'Armory', 'Grand Workshop'],
+    },
+    [BuildingType.CASTLE]: {
+        dataSource: 'Manual Milestones',
+        metric: 'PhD milestones',
+        configKey: '',
+        themeColor: 0x78909C,
+        levelLabels: ['Foundation', 'Walls', 'Battlements', 'Towers', 'The Keep'],
+    },
+    [BuildingType.HOUSE]: {
+        dataSource: 'Google Sheets',
+        metric: 'tasks completed',
+        configKey: 'sheetsSpreadsheetId',
+        themeColor: 0x8D6E63,
+        levelLabels: ['Hut', 'Cottage', 'House', 'Manor', 'Estate'],
+    },
+};
+
 export function getLevelForCount(type: BuildingType, count: number): number {
     const config = BUILDING_CONFIGS[type];
     let level = 1;
