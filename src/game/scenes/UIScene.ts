@@ -1,12 +1,14 @@
 import { Scene, GameObjects } from 'phaser';
 import { EventBus } from '../EventBus';
 import { VillageProgress, Resources } from '../types/gameState';
+import { AchievementSystem } from '../systems/AchievementSystem';
 
 export class UIScene extends Scene {
     private resourceTexts: Record<string, GameObjects.Text> = {};
     private titleText!: GameObjects.Text;
     private lastUpdatedText!: GameObjects.Text;
     private panelBg!: GameObjects.Rectangle;
+    private achievementCountText!: GameObjects.Text;
 
     constructor() {
         super('UIScene');
@@ -73,13 +75,35 @@ export class UIScene extends Scene {
 
         // Controls hint (bottom left)
         this.add.text(10, this.scale.height - 10,
-            'Arrow keys to move | Scroll to zoom | Click NPCs & buildings | Tab for progress | Ship to travel',
+            'Arrow keys to move | Scroll to zoom | Click NPCs & buildings | Tab for progress | Y for trophies | Ship to travel',
             { fontFamily: 'Arial', fontSize: '11px', color: '#666666' }
         ).setOrigin(0, 1).setScrollFactor(0).setDepth(100);
 
+        // Trophy case button (top right, before dashboard)
+        const achieveSystem = new AchievementSystem();
+        const trophyBtn = this.add.text(
+            this.scale.width - 130, 8, '\u{1F3C6}',
+            {
+                fontFamily: 'Arial',
+                fontSize: '16px',
+                backgroundColor: 'rgba(0,0,0,0.4)',
+                padding: { x: 5, y: 4 },
+            }
+        ).setScrollFactor(0).setDepth(100).setInteractive({ useHandCursor: true });
+
+        trophyBtn.on('pointerdown', () => EventBus.emit('toggle-trophy-case'));
+        trophyBtn.on('pointerover', () => trophyBtn.setAlpha(0.7));
+        trophyBtn.on('pointerout', () => trophyBtn.setAlpha(1));
+
+        this.achievementCountText = this.add.text(
+            this.scale.width - 100, 14,
+            `${achieveSystem.getUnlockedCount()}/${achieveSystem.getTotalCount()}`,
+            { fontFamily: 'Arial', fontSize: '10px', color: '#FFD700' }
+        ).setScrollFactor(0).setDepth(100);
+
         // Dashboard toggle button (top right, before mute)
         const dashBtn = this.add.text(
-            this.scale.width - 80, 8, '\u2261',
+            this.scale.width - 70, 8, '\u2261',
             {
                 fontFamily: 'Arial',
                 fontSize: '20px',
@@ -97,7 +121,7 @@ export class UIScene extends Scene {
         // Mute toggle button (top right)
         const isMuted = localStorage.getItem('phd-sim-muted') === 'true';
         const muteBtn = this.add.text(
-            this.scale.width - 40, 8,
+            this.scale.width - 35, 8,
             isMuted ? 'M' : '\u266A',
             {
                 fontFamily: 'Arial',
@@ -123,6 +147,11 @@ export class UIScene extends Scene {
         // Listen for updates from VillageScene
         EventBus.on('village-updated', (updatedProgress: VillageProgress) => {
             this.updateResources(updatedProgress.resources);
+            this.refreshAchievementCount();
+        });
+
+        EventBus.on('achievement-unlocked', () => {
+            this.refreshAchievementCount();
         });
     }
 
@@ -130,5 +159,10 @@ export class UIScene extends Scene {
         this.resourceTexts.researchPoints.setText(`RP: ${resources.researchPoints}`);
         this.resourceTexts.knowledge.setText(`KN: ${resources.knowledge}`);
         this.resourceTexts.reputation.setText(`REP: ${resources.reputation}`);
+    }
+
+    private refreshAchievementCount() {
+        const sys = new AchievementSystem();
+        this.achievementCountText.setText(`${sys.getUnlockedCount()}/${sys.getTotalCount()}`);
     }
 }

@@ -5,6 +5,8 @@ import { BUILDING_CONFIGS, VILLAGE_LAYOUT, TRAVEL_DESTINATIONS, TravelDestinatio
 import { loadState, getStateDiff } from '../../lib/stateManager';
 import { NpcId, NPC_CONFIGS } from '../data/dialogueConfig';
 import { DialogueSystem } from '../systems/DialogueSystem';
+import { AchievementSystem } from '../systems/AchievementSystem';
+import { AchievementDefinition, ACHIEVEMENTS, CATEGORY_META, AchievementCategory, TIER_COLORS } from '../data/achievementConfig';
 
 interface PlacedBuilding {
     type: BuildingType;
@@ -72,6 +74,18 @@ export class VillageScene extends Scene {
     private dashboardOverlayItems: GameObjects.GameObject[] = [];
     private dashboardOverlayVisible = false;
 
+    // Achievement system
+    private achievementSystem!: AchievementSystem;
+
+    // Trophy case overlay
+    private trophyCaseOverlayItems: GameObjects.GameObject[] = [];
+    private trophyCaseOverlayVisible = false;
+    private trophyCaseCategory: AchievementCategory | 'all' = 'all';
+
+    // Achievement toast queue
+    private achievementToastQueue: AchievementDefinition[] = [];
+    private isShowingToast = false;
+
     // Audio
     private bgm: Phaser.Sound.BaseSound | null = null;
     private musicStarted = false;
@@ -86,6 +100,7 @@ export class VillageScene extends Scene {
         const state = loadState();
         this.villageProgress = state.village;
         this.dialogueSystem = new DialogueSystem();
+        this.achievementSystem = new AchievementSystem();
 
         this.buildCollisionMap();
         this.renderGround();
@@ -108,6 +123,12 @@ export class VillageScene extends Scene {
 
         this.scene.launch('UIScene', { progress: this.villageProgress });
         EventBus.on('toggle-dashboard', () => this.toggleDashboard());
+        EventBus.on('toggle-trophy-case', () => this.toggleTrophyCase());
+        EventBus.on('achievement-unlocked', (a: AchievementDefinition) => this.queueAchievementToast(a));
+
+        // Check achievements on initial load
+        this.achievementSystem.checkAchievements(state.village, state.config);
+
         EventBus.emit('current-scene-ready', this);
     }
 
@@ -863,7 +884,7 @@ export class VillageScene extends Scene {
 
     // ─── NPC Dialogue Overlay ───
     private openNpcDialogue(npcId: NpcId) {
-        if (this.travelOverlayVisible || this.dialogueOverlayVisible || this.dashboardOverlayVisible) return;
+        if (this.travelOverlayVisible || this.dialogueOverlayVisible || this.dashboardOverlayVisible || this.trophyCaseOverlayVisible) return;
 
         const line = this.dialogueSystem.selectDialogue(npcId, this.villageProgress);
         if (!line) return;
@@ -1323,14 +1344,18 @@ export class VillageScene extends Scene {
             }
         });
 
-        // Tab toggles dashboard, Escape closes overlays
+        // Tab toggles dashboard, Y toggles trophy case, Escape closes overlays
         this.input.keyboard!.on('keydown-TAB', (event: KeyboardEvent) => {
             event.preventDefault();
             this.toggleDashboard();
         });
+        this.input.keyboard!.on('keydown-Y', () => {
+            this.toggleTrophyCase();
+        });
         this.input.keyboard!.on('keydown-ESC', () => {
             if (this.dashboardOverlayVisible) this.hideDashboard();
             else if (this.travelOverlayVisible) this.hideTravelOverlay();
+            else if (this.trophyCaseOverlayVisible) this.hideTrophyCase();
             else if (this.dialogueOverlayVisible) this.closeNpcDialogue();
         });
     }
@@ -1421,5 +1446,289 @@ export class VillageScene extends Scene {
             }
         }
         EventBus.emit('village-updated', progress);
+
+        // Check achievements after every village update
+        const achState = loadState();
+        this.achievementSystem.checkAchievements(progress, achState.config);
+    }
+
+    // ─── Trophy Case Overlay ───
+    private toggleTrophyCase() {
+        if (this.dialogueOverlayVisible) this.closeNpcDialogue();
+        if (this.travelOverlayVisible) this.hideTravelOverlay();
+        if (this.dashboardOverlayVisible) this.hideDashboard();
+        if (this.trophyCaseOverlayVisible) {
+            this.hideTrophyCase();
+        } else {
+            this.trophyCaseCategory = 'all';
+            this.showTrophyCase();
+        }
+    }
+
+    private showTrophyCase() {
+        this.trophyCaseOverlayVisible = true;
+        const cam = this.cameras.main;
+        const w = cam.width;
+        const h = cam.height;
+        const items: GameObjects.GameObject[] = [];
+        const state = loadState();
+        const config = state.config;
+        const vp = this.villageProgress;
+
+        // Backdrop
+        const backdrop = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.85)
+            .setScrollFactor(0).setDepth(3000).setInteractive();
+        backdrop.on('pointerdown', () => this.hideTrophyCase());
+        items.push(backdrop);
+
+        // Title
+        const title = this.add.text(w / 2, 35, '\u2550\u2550\u2550  Trophy Case  \u2550\u2550\u2550', {
+            fontFamily: 'Georgia, serif', fontSize: '20px', color: '#FFD700',
+            fontStyle: 'bold', stroke: '#000000', strokeThickness: 2,
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3001);
+        items.push(title);
+
+        // Summary
+        const unlockedCount = this.achievementSystem.getUnlockedCount();
+        const totalCount = this.achievementSystem.getTotalCount();
+        const totalPoints = this.achievementSystem.getTotalPoints();
+        const summary = this.add.text(w / 2, 58,
+            `${unlockedCount}/${totalCount} achievements  \u2022  ${totalPoints} points`, {
+            fontFamily: 'Arial', fontSize: '12px', color: '#aaaaaa',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3001);
+        items.push(summary);
+
+        // Category tabs
+        const categories: Array<AchievementCategory | 'all'> = ['all', 'buildings', 'resources', 'travel', 'social', 'milestones', 'meta'];
+        const tabY = 82;
+        let tabX = 60;
+        for (const cat of categories) {
+            const label = cat === 'all' ? 'All' : CATEGORY_META[cat].label;
+            const isSelected = this.trophyCaseCategory === cat;
+            const tab = this.add.text(tabX, tabY, label, {
+                fontFamily: 'Arial', fontSize: '11px',
+                color: isSelected ? '#FFD700' : '#666666',
+                fontStyle: isSelected ? 'bold' : 'normal',
+                backgroundColor: isSelected ? 'rgba(255,215,0,0.1)' : undefined,
+                padding: { x: 6, y: 3 },
+            }).setScrollFactor(0).setDepth(3001).setInteractive({ useHandCursor: true });
+
+            tab.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+                pointer.event.stopPropagation();
+                this.trophyCaseCategory = cat;
+                this.hideTrophyCase();
+                this.showTrophyCase();
+            });
+            tab.on('pointerover', () => { if (!isSelected) tab.setColor('#cccccc'); });
+            tab.on('pointerout', () => { if (!isSelected) tab.setColor('#666666'); });
+
+            items.push(tab);
+            tabX += tab.width + 10;
+        }
+
+        // Filter achievements by category
+        const filtered = this.trophyCaseCategory === 'all'
+            ? ACHIEVEMENTS
+            : ACHIEVEMENTS.filter(a => a.category === this.trophyCaseCategory);
+
+        // Sort: unlocked first, then by tier (gold, silver, bronze)
+        const tierOrder = { gold: 0, silver: 1, bronze: 2 };
+        const sorted = [...filtered].sort((a, b) => {
+            const aUnlocked = this.achievementSystem.isUnlocked(a.id) ? 0 : 1;
+            const bUnlocked = this.achievementSystem.isUnlocked(b.id) ? 0 : 1;
+            if (aUnlocked !== bUnlocked) return aUnlocked - bUnlocked;
+            return tierOrder[a.tier] - tierOrder[b.tier];
+        });
+
+        // Render achievements
+        let yPos = 110;
+        const leftX = 60;
+        const maxY = h - 40;
+        let lastCategory: string | null = null;
+
+        for (const achievement of sorted) {
+            if (yPos > maxY) break;
+
+            // Category header when showing "all"
+            if (this.trophyCaseCategory === 'all' && achievement.category !== lastCategory) {
+                lastCategory = achievement.category;
+                const catMeta = CATEGORY_META[achievement.category];
+                const catHeader = this.add.text(leftX, yPos, `${catMeta.icon} ${catMeta.label.toUpperCase()}`, {
+                    fontFamily: 'Arial', fontSize: '10px', color: catMeta.color, fontStyle: 'bold',
+                }).setScrollFactor(0).setDepth(3001);
+                items.push(catHeader);
+                yPos += 18;
+            }
+
+            const isUnlocked = this.achievementSystem.isUnlocked(achievement.id);
+            const tierColor = TIER_COLORS[achievement.tier];
+            const progress = this.achievementSystem.getProgress(achievement, vp, config);
+
+            // Icon
+            const icon = this.add.text(leftX, yPos, isUnlocked ? achievement.icon : '\u2753', {
+                fontSize: '16px',
+            }).setScrollFactor(0).setDepth(3001);
+            items.push(icon);
+
+            // Name
+            const name = this.add.text(leftX + 28, yPos, isUnlocked ? achievement.name : '??????', {
+                fontFamily: 'Georgia, serif', fontSize: '12px',
+                color: isUnlocked ? '#e0e0e0' : '#555555',
+                fontStyle: 'bold',
+            }).setScrollFactor(0).setDepth(3001);
+            items.push(name);
+
+            // Tier badge
+            const tierLabel = achievement.tier.charAt(0).toUpperCase() + achievement.tier.slice(1);
+            const tier = this.add.text(w - 80, yPos, tierLabel, {
+                fontFamily: 'Arial', fontSize: '10px', color: tierColor, fontStyle: 'bold',
+            }).setOrigin(1, 0).setScrollFactor(0).setDepth(3001);
+            items.push(tier);
+
+            yPos += 18;
+
+            // Description/hint
+            const descText = isUnlocked ? achievement.description : achievement.hint;
+            const desc = this.add.text(leftX + 28, yPos, descText, {
+                fontFamily: 'Arial', fontSize: '10px',
+                color: isUnlocked ? '#999999' : '#555555',
+                fontStyle: isUnlocked ? 'normal' : 'italic',
+            }).setScrollFactor(0).setDepth(3001);
+            items.push(desc);
+
+            // Progress bar + status
+            const barX = w - 230;
+            const barW = 120;
+            const barH = 6;
+
+            const barBg = this.add.rectangle(barX + barW / 2, yPos + 4, barW, barH, 0x333333)
+                .setScrollFactor(0).setDepth(3001);
+            items.push(barBg);
+
+            if (progress > 0) {
+                const fillW = Math.max(2, barW * progress);
+                const fillColorNum = parseInt(tierColor.replace('#', ''), 16);
+                const barFill = this.add.rectangle(barX + fillW / 2, yPos + 4, fillW, barH, fillColorNum)
+                    .setScrollFactor(0).setDepth(3002);
+                items.push(barFill);
+            }
+
+            const pctText = `${Math.round(progress * 100)}%`;
+            const pct = this.add.text(w - 80, yPos, pctText, {
+                fontFamily: 'Arial', fontSize: '10px',
+                color: isUnlocked ? '#66BB6A' : '#777777',
+            }).setOrigin(1, 0).setScrollFactor(0).setDepth(3001);
+            items.push(pct);
+
+            // Unlock date (if unlocked)
+            if (isUnlocked) {
+                const ts = this.achievementSystem.getUnlockTimestamp(achievement.id);
+                if (ts) {
+                    const dateStr = new Date(ts).toLocaleDateString();
+                    const dateText = this.add.text(leftX + 28, yPos + 14, `Unlocked ${dateStr}`, {
+                        fontFamily: 'Arial', fontSize: '9px', color: '#4a4a4a',
+                    }).setScrollFactor(0).setDepth(3001);
+                    items.push(dateText);
+                    yPos += 14;
+                }
+            }
+
+            yPos += 22;
+        }
+
+        // Close hint
+        const closeHint = this.add.text(w / 2, h - 20, 'Press Y or click to close', {
+            fontFamily: 'Arial', fontSize: '11px', color: '#555555',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3001);
+        items.push(closeHint);
+
+        this.trophyCaseOverlayItems = items;
+    }
+
+    private hideTrophyCase() {
+        for (const item of this.trophyCaseOverlayItems) {
+            item.destroy();
+        }
+        this.trophyCaseOverlayItems = [];
+        this.trophyCaseOverlayVisible = false;
+    }
+
+    // ─── Achievement Toast Notifications ───
+    private queueAchievementToast(achievement: AchievementDefinition) {
+        this.achievementToastQueue.push(achievement);
+        if (!this.isShowingToast) {
+            this.showNextToast();
+        }
+    }
+
+    private showNextToast() {
+        if (this.achievementToastQueue.length === 0) {
+            this.isShowingToast = false;
+            return;
+        }
+
+        this.isShowingToast = true;
+        const achievement = this.achievementToastQueue.shift()!;
+        const cam = this.cameras.main;
+
+        const toastW = 280;
+        const toastH = 60;
+        const toastX = cam.width - toastW / 2 - 20;
+        const startY = -toastH;
+        const targetY = 60;
+
+        const tierColor = TIER_COLORS[achievement.tier];
+        const tierColorNum = parseInt(tierColor.replace('#', ''), 16);
+
+        // Background
+        const bg = this.add.rectangle(toastX, startY, toastW, toastH, 0x1a1a2e, 0.95)
+            .setStrokeStyle(2, tierColorNum)
+            .setScrollFactor(0).setDepth(4000);
+
+        // Icon
+        const icon = this.add.text(toastX - toastW / 2 + 24, startY, achievement.icon, {
+            fontSize: '24px',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(4001);
+
+        // "Achievement Unlocked!" label
+        const label = this.add.text(toastX - toastW / 2 + 50, startY - 12, 'Achievement Unlocked!', {
+            fontFamily: 'Arial', fontSize: '9px', color: tierColor, fontStyle: 'bold',
+        }).setScrollFactor(0).setDepth(4001);
+
+        // Achievement name
+        const nameText = this.add.text(toastX - toastW / 2 + 50, startY + 2, achievement.name, {
+            fontFamily: 'Georgia, serif', fontSize: '13px', color: '#ffffff', fontStyle: 'bold',
+        }).setScrollFactor(0).setDepth(4001);
+
+        // Description
+        const desc = this.add.text(toastX - toastW / 2 + 50, startY + 18, achievement.description, {
+            fontFamily: 'Arial', fontSize: '10px', color: '#aaaaaa',
+        }).setScrollFactor(0).setDepth(4001);
+
+        const allItems = [bg, icon, label, nameText, desc];
+
+        // Slide in from top
+        this.tweens.add({
+            targets: allItems,
+            y: `+=${targetY - startY}`,
+            duration: 400,
+            ease: 'Back.easeOut',
+            onComplete: () => {
+                // Hold for 3 seconds, then slide out
+                this.time.delayedCall(3000, () => {
+                    this.tweens.add({
+                        targets: allItems,
+                        y: `-=${targetY - startY}`,
+                        alpha: 0,
+                        duration: 300,
+                        ease: 'Cubic.easeIn',
+                        onComplete: () => {
+                            for (const item of allItems) item.destroy();
+                            this.showNextToast();
+                        },
+                    });
+                });
+            },
+        });
     }
 }
