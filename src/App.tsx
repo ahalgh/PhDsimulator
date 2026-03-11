@@ -3,7 +3,7 @@ import { IRefPhaserGame, PhaserGame } from './PhaserGame';
 import { VillageScene } from './game/scenes/VillageScene';
 import { EventBus } from './game/EventBus';
 import { loadState, saveState, shouldFetch, clearFetchCooldown } from './lib/stateManager';
-import { calculateProgress, GitHubData, OrcidData, ScholarData, SheetData } from './lib/progressCalculator';
+import { calculateProgress, GitHubData, OrcidData, ScholarData, TasksData, CalendarData } from './lib/progressCalculator';
 
 function App() {
     const phaserRef = useRef<IRefPhaserGame | null>(null);
@@ -27,7 +27,8 @@ function App() {
             let githubData: GitHubData | null = null;
             let orcidData: OrcidData | null = null;
             let scholarData: ScholarData | null = null;
-            let sheetData: SheetData | null = null;
+            let tasksData: TasksData | null = null;
+            let calendarData: CalendarData | null = null;
 
             // Fetch GitHub data if username is configured
             if (state.config.githubUsername) {
@@ -59,18 +60,32 @@ function App() {
                 }
             }
 
-            // Fetch Google Sheets data if configured
-            if (state.config.sheetsSpreadsheetId) {
+            // Fetch Google Tasks data if enabled
+            if (state.config.googleTasksEnabled) {
                 try {
-                    const res = await fetch(`/api/sheets?spreadsheetId=${encodeURIComponent(state.config.sheetsSpreadsheetId)}`);
-                    if (res.ok) sheetData = await res.json();
+                    const res = await fetch('/api/tasks');
+                    if (res.ok) tasksData = await res.json();
                 } catch (e) {
-                    console.warn('Sheets fetch failed:', e);
+                    console.warn('Tasks fetch failed:', e);
+                }
+            }
+
+            // Fetch Google Calendar data if configured
+            if (state.config.googleCalendarId) {
+                try {
+                    const res = await fetch(`/api/calendar?calendarId=${encodeURIComponent(state.config.googleCalendarId)}`);
+                    if (res.ok) calendarData = await res.json();
+                } catch (e) {
+                    console.warn('Calendar fetch failed:', e);
                 }
             }
 
             // Calculate new progress
-            const newProgress = calculateProgress(githubData, orcidData, scholarData, sheetData);
+            const milestones =
+                (state.config.manualMilestones.qualifyingExam ? 1 : 0) +
+                (state.config.manualMilestones.proposalDefense ? 1 : 0) +
+                (state.config.manualMilestones.dissertationDefense ? 1 : 0);
+            const newProgress = calculateProgress(githubData, orcidData, scholarData, tasksData, calendarData, milestones);
 
             // Save state with new progress
             state.previousVillage = state.village;

@@ -64,24 +64,13 @@ export interface UserConfig {
     githubUsername: string;
     orcidId: string;
     googleScholarId: string;
-    sheetsSpreadsheetId: string;
-    sheetMapping: SheetMapping;
+    googleTasksEnabled: boolean;
+    googleCalendarId: string;
     manualMilestones: {
         qualifyingExam: boolean;
         proposalDefense: boolean;
         dissertationDefense: boolean;
     };
-}
-
-export interface SheetMapping {
-    taskColumn: string;
-    statusColumn: string;
-    completedValue: string;
-    milestonesRange: string;
-    skillsRange: string;
-    coursesRange: string;
-    conferencesRange: string;
-    headerRow: number;
 }
 
 export interface GameState {
@@ -99,17 +88,8 @@ export function getDefaultConfig(): UserConfig {
         githubUsername: '',
         orcidId: '',
         googleScholarId: '',
-        sheetsSpreadsheetId: '',
-        sheetMapping: {
-            taskColumn: 'B',
-            statusColumn: 'D',
-            completedValue: 'Done',
-            milestonesRange: '',
-            skillsRange: '',
-            coursesRange: '',
-            conferencesRange: '',
-            headerRow: 1,
-        },
+        googleTasksEnabled: false,
+        googleCalendarId: '',
         manualMilestones: {
             qualifyingExam: false,
             proposalDefense: false,
@@ -137,7 +117,7 @@ export function getDefaultVillageProgress(): VillageProgress {
 
 export function getDefaultGameState(): GameState {
     return {
-        version: 2,
+        version: 3,
         config: getDefaultConfig(),
         village: getDefaultVillageProgress(),
         previousVillage: null,

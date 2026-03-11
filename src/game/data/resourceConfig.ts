@@ -4,6 +4,7 @@ export const RESOURCE_MULTIPLIERS = {
         commitPoints: 1,
         prMergedPoints: 5,
         issueClosedPoints: 2,
+        academicEventPoints: 0.5,
     },
     knowledge: {
         coursePoints: 10,

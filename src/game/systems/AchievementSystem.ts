@@ -221,7 +221,8 @@ export class AchievementSystem {
         if (config.githubUsername) count++;
         if (config.orcidId) count++;
         if (config.googleScholarId) count++;
-        if (config.sheetsSpreadsheetId) count++;
+        if (config.googleTasksEnabled) count++;
+        if (config.googleCalendarId) count++;
         return count;
     }
 

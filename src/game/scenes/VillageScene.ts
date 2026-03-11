@@ -1230,7 +1230,8 @@ export class VillageScene extends Scene {
             { name: 'GitHub', connected: !!config.githubUsername },
             { name: 'ORCID', connected: !!config.orcidId },
             { name: 'Scholar', connected: !!config.googleScholarId },
-            { name: 'Sheets', connected: !!config.sheetsSpreadsheetId },
+            { name: 'Tasks', connected: !!config.googleTasksEnabled },
+            { name: 'Calendar', connected: !!config.googleCalendarId },
         ];
 
         for (const src of sources) {

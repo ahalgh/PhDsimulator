@@ -19,35 +19,43 @@ export interface ScholarData {
     hIndex: number;
 }
 
-export interface SheetData {
+export interface TasksData {
     tasksCompleted: number;
     coursesCompleted: number;
     skillsLearned: number;
-    milestonesCompleted: number;
     conferences: Array<{ name: string; theme: string; location?: string }>;
+}
+
+export interface CalendarData {
+    conferences: Array<{ name: string; theme: string; location?: string }>;
+    academicEventCount: number;
 }
 
 export function calculateProgress(
     github: GitHubData | null,
     orcid: OrcidData | null,
     scholar: ScholarData | null,
-    sheet: SheetData | null
+    tasks: TasksData | null,
+    calendar: CalendarData | null,
+    manualMilestones: number
 ): VillageProgress {
     const gh = github ?? { totalCommits: 0, totalPRsMerged: 0, totalIssuesClosed: 0 };
     const or = orcid ?? { totalPublications: 0, educationEntries: 0 };
     const sc = scholar ?? { totalCitations: 0, hIndex: 0 };
-    const sh = sheet ?? { tasksCompleted: 0, coursesCompleted: 0, skillsLearned: 0, milestonesCompleted: 0, conferences: [] };
+    const tk = tasks ?? { tasksCompleted: 0, coursesCompleted: 0, skillsLearned: 0, conferences: [] };
+    const cal = calendar ?? { conferences: [], academicEventCount: 0 };
 
     // Calculate resources
     const researchPoints =
         gh.totalCommits * RESOURCE_MULTIPLIERS.researchPoints.commitPoints +
         gh.totalPRsMerged * RESOURCE_MULTIPLIERS.researchPoints.prMergedPoints +
-        gh.totalIssuesClosed * RESOURCE_MULTIPLIERS.researchPoints.issueClosedPoints;
+        gh.totalIssuesClosed * RESOURCE_MULTIPLIERS.researchPoints.issueClosedPoints +
+        Math.floor(cal.academicEventCount * RESOURCE_MULTIPLIERS.researchPoints.academicEventPoints);
 
     const knowledge =
-        sh.coursesCompleted * RESOURCE_MULTIPLIERS.knowledge.coursePoints +
+        tk.coursesCompleted * RESOURCE_MULTIPLIERS.knowledge.coursePoints +
         or.totalPublications * RESOURCE_MULTIPLIERS.knowledge.publicationPoints +
-        sh.tasksCompleted * RESOURCE_MULTIPLIERS.knowledge.taskPoints;
+        tk.tasksCompleted * RESOURCE_MULTIPLIERS.knowledge.taskPoints;
 
     const reputation =
         sc.totalCitations * RESOURCE_MULTIPLIERS.reputation.citationPoints +
@@ -56,10 +64,10 @@ export function calculateProgress(
     // Calculate building levels
     const libraryLevel = getLevelForCount(BuildingType.LIBRARY, or.totalPublications);
     const labLevel = getLevelForCount(BuildingType.LABORATORY, gh.totalCommits);
-    const towerLevel = getLevelForCount(BuildingType.TOWER, sh.coursesCompleted);
-    const workshopLevel = getLevelForCount(BuildingType.WORKSHOP, sh.skillsLearned);
-    const castleLevel = getLevelForCount(BuildingType.CASTLE, sh.milestonesCompleted);
-    const houseCount = getHouseCount(sh.tasksCompleted);
+    const towerLevel = getLevelForCount(BuildingType.TOWER, tk.coursesCompleted);
+    const workshopLevel = getLevelForCount(BuildingType.WORKSHOP, tk.skillsLearned);
+    const castleLevel = getLevelForCount(BuildingType.CASTLE, manualMilestones);
+    const houseCount = getHouseCount(tk.tasksCompleted);
 
     // Calculate decorations
     const trees = getDecorationCount(sc.totalCitations, DECORATION_THRESHOLDS.treesPerCitations);
@@ -67,10 +75,20 @@ export function calculateProgress(
     const fountains = getDecorationCount(sc.hIndex, DECORATION_THRESHOLDS.fountainsPerHIndex);
 
     // Map conferences/internships to travel destinations
+    // Merge conferences from both Tasks and Calendar, deduplicate by name
+    const allConferences = [...tk.conferences, ...cal.conferences];
+    const seenNames = new Set<string>();
+    const uniqueConferences = allConferences.filter(c => {
+        const key = c.name.toLowerCase().trim();
+        if (seenNames.has(key)) return false;
+        seenNames.add(key);
+        return true;
+    });
+
     const travelDestinations: TravelDestination[] = [];
     const matchedIds = new Set<string>();
 
-    for (const conf of sh.conferences) {
+    for (const conf of uniqueConferences) {
         const nameLower = conf.name.toLowerCase();
         const locLower = (conf.location || '').toLowerCase();
 
@@ -106,9 +124,9 @@ export function calculateProgress(
         buildings: {
             library: { level: libraryLevel, rawCount: or.totalPublications },
             laboratory: { level: labLevel, rawCount: gh.totalCommits },
-            tower: { level: towerLevel, rawCount: sh.coursesCompleted },
-            workshop: { level: workshopLevel, rawCount: sh.skillsLearned },
-            castle: { level: castleLevel, rawCount: sh.milestonesCompleted },
+            tower: { level: towerLevel, rawCount: tk.coursesCompleted },
+            workshop: { level: workshopLevel, rawCount: tk.skillsLearned },
+            castle: { level: castleLevel, rawCount: manualMilestones },
             houses: { count: houseCount },
         },
         decorations: { trees, banners, fountains },

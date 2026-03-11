@@ -52,6 +52,20 @@ export function loadState(): GameState {
             parsed.version = 2;
         }
 
+        // Migrate v2 → v3: Google Sheets → Google Tasks + Calendar
+        if (parsed.version === 2) {
+            const config = parsed.config as any;
+            delete config.sheetsSpreadsheetId;
+            delete config.sheetMapping;
+            if (config.googleTasksEnabled === undefined) {
+                config.googleTasksEnabled = false;
+            }
+            if (config.googleCalendarId === undefined) {
+                config.googleCalendarId = '';
+            }
+            parsed.version = 3;
+        }
+
         return parsed;
     } catch {
         return getDefaultGameState();

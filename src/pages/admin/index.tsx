@@ -5,7 +5,8 @@ interface Config {
     githubUsername: string;
     orcidId: string;
     googleScholarId: string;
-    sheetsSpreadsheetId: string;
+    googleTasksEnabled: boolean;
+    googleCalendarId: string;
     manualMilestones: {
         qualifyingExam: boolean;
         proposalDefense: boolean;
@@ -20,7 +21,8 @@ export default function AdminPage() {
         githubUsername: '',
         orcidId: '',
         googleScholarId: '',
-        sheetsSpreadsheetId: '',
+        googleTasksEnabled: false,
+        googleCalendarId: '',
         manualMilestones: {
             qualifyingExam: false,
             proposalDefense: false,
@@ -48,7 +50,8 @@ export default function AdminPage() {
                         githubUsername: state.config.githubUsername || '',
                         orcidId: state.config.orcidId || '',
                         googleScholarId: state.config.googleScholarId || '',
-                        sheetsSpreadsheetId: state.config.sheetsSpreadsheetId || '',
+                        googleTasksEnabled: state.config.googleTasksEnabled || false,
+                        googleCalendarId: state.config.googleCalendarId || '',
                         manualMilestones: state.config.manualMilestones || {
                             qualifyingExam: false,
                             proposalDefense: false,
@@ -152,6 +155,48 @@ export default function AdminPage() {
         }
     };
 
+    const testTasks = async () => {
+        setTestResults(prev => ({ ...prev, tasks: 'Testing...' }));
+        try {
+            const res = await fetch('/api/tasks');
+            if (res.ok) {
+                const data = await res.json();
+                setTestResults(prev => ({
+                    ...prev,
+                    tasks: `Found ${data.tasksCompleted} tasks, ${data.coursesCompleted} courses, ${data.skillsLearned} skills, ${data.conferences.length} conferences`,
+                }));
+            } else {
+                const err = await res.json();
+                setTestResults(prev => ({ ...prev, tasks: `Error: ${err.error}` }));
+            }
+        } catch {
+            setTestResults(prev => ({ ...prev, tasks: 'Connection failed' }));
+        }
+    };
+
+    const testCalendar = async () => {
+        if (!config.googleCalendarId) {
+            setTestResults(prev => ({ ...prev, calendar: 'Enter a Calendar ID first' }));
+            return;
+        }
+        setTestResults(prev => ({ ...prev, calendar: 'Testing...' }));
+        try {
+            const res = await fetch(`/api/calendar?calendarId=${encodeURIComponent(config.googleCalendarId)}`);
+            if (res.ok) {
+                const data = await res.json();
+                setTestResults(prev => ({
+                    ...prev,
+                    calendar: `Found ${data.conferences.length} conferences, ${data.academicEventCount} academic events`,
+                }));
+            } else {
+                const err = await res.json();
+                setTestResults(prev => ({ ...prev, calendar: `Error: ${err.error}` }));
+            }
+        } catch {
+            setTestResults(prev => ({ ...prev, calendar: 'Connection failed' }));
+        }
+    };
+
     // ── Data Management functions ──
 
     const exportBackup = () => {
@@ -160,7 +205,7 @@ export default function AdminPage() {
                 _meta: {
                     exportDate: new Date().toISOString(),
                     exportVersion: 1,
-                    gameStateVersion: 2,
+                    gameStateVersion: 3,
                     source: 'phd-simulator',
                 },
                 gameState: JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'),
@@ -198,8 +243,8 @@ export default function AdminPage() {
                     setImportError('Invalid file: not a PhD Simulator backup.');
                     return;
                 }
-                if (data._meta.gameStateVersion > 2) {
-                    setImportError(`Incompatible version: file is v${data._meta.gameStateVersion}, app supports up to v2.`);
+                if (data._meta.gameStateVersion > 3) {
+                    setImportError(`Incompatible version: file is v${data._meta.gameStateVersion}, app supports up to v3.`);
                     return;
                 }
                 if (!data.gameState) {
@@ -266,7 +311,8 @@ export default function AdminPage() {
         if (cfg?.githubUsername) sources.push('GitHub');
         if (cfg?.orcidId) sources.push('ORCID');
         if (cfg?.googleScholarId) sources.push('Scholar');
-        if (cfg?.sheetsSpreadsheetId) sources.push('Sheets');
+        if (cfg?.googleTasksEnabled) sources.push('Tasks');
+        if (cfg?.googleCalendarId) sources.push('Calendar');
 
         return {
             exportDate: meta?.exportDate ? new Date(meta.exportDate).toLocaleString() : 'Unknown',
@@ -436,23 +482,62 @@ export default function AdminPage() {
                     </p>
                 </div>
 
-                {/* Google Sheets */}
+                {/* Google Tasks */}
                 <div style={styles.section}>
-                    <div style={styles.sectionTitle}>Google Sheets</div>
+                    <div style={styles.sectionTitle}>Google Tasks</div>
+                    <label style={styles.checkboxLabel}>
+                        <input
+                            type="checkbox"
+                            style={styles.checkbox}
+                            checked={config.googleTasksEnabled}
+                            onChange={e => setConfig({ ...config, googleTasksEnabled: e.target.checked })}
+                        />
+                        Enable Google Tasks Integration
+                    </label>
+                    <p style={{ fontSize: '12px', color: '#888', marginTop: '-4px', marginBottom: '12px' }}>
+                        Requires GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY in server environment.
+                        For Workspace users, also set GOOGLE_TASKS_USER_EMAIL for domain-wide delegation.
+                    </p>
+                    <p style={{ fontSize: '12px', color: '#aaa', marginBottom: '8px' }}>
+                        <strong>Task list naming convention:</strong> Name your task lists to categorize items:
+                    </p>
+                    <ul style={{ fontSize: '12px', color: '#888', paddingLeft: '20px', marginTop: '0' }}>
+                        <li>&quot;PhD Courses&quot; or &quot;Certifications&quot; &rarr; courses (Tower)</li>
+                        <li>&quot;Skills&quot; or &quot;Tools&quot; &rarr; skills (Workshop)</li>
+                        <li>&quot;Conferences&quot; or &quot;Travel&quot; &rarr; conference destinations (Ship)</li>
+                        <li>Anything else &rarr; general tasks (Houses)</li>
+                    </ul>
+                    {config.googleTasksEnabled && (
+                        <>
+                            <button style={styles.button} onClick={testTasks}>
+                                Test Connection
+                            </button>
+                            {testResults.tasks && <p style={styles.testResult}>{testResults.tasks}</p>}
+                        </>
+                    )}
+                </div>
+
+                {/* Google Calendar */}
+                <div style={styles.section}>
+                    <div style={styles.sectionTitle}>Google Calendar</div>
                     <label style={styles.label}>
-                        Spreadsheet ID (from the URL: docs.google.com/spreadsheets/d/<b>THIS_PART</b>/edit)
+                        Calendar ID (your email, or a specific calendar ID)
                     </label>
                     <input
                         style={styles.input}
                         type="text"
-                        value={config.sheetsSpreadsheetId}
-                        onChange={e => setConfig({ ...config, sheetsSpreadsheetId: e.target.value })}
-                        placeholder="e.g., 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"
+                        value={config.googleCalendarId}
+                        onChange={e => setConfig({ ...config, googleCalendarId: e.target.value })}
+                        placeholder="e.g., your.email@gmail.com or calendar-id@group.calendar.google.com"
                     />
-                    <p style={{ fontSize: '12px', color: '#888', marginTop: '-8px' }}>
-                        Your sheet must be published to web (File &gt; Share &gt; Publish to web).
-                        Expected columns: Name/Task, Status (Done/Complete), Type (task/course/skill/milestone/conference).
+                    <p style={{ fontSize: '12px', color: '#888', marginTop: '-8px', marginBottom: '8px' }}>
+                        Share your calendar with the service account email (found in server env).
+                        Conference-related events unlock travel destinations. Academic events boost Research Points.
                     </p>
+                    <button style={styles.button} onClick={testCalendar}>
+                        Test Connection
+                    </button>
+                    {testResults.calendar && <p style={styles.testResult}>{testResults.calendar}</p>}
                 </div>
 
                 {/* Manual Milestones */}
