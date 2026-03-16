@@ -4,6 +4,7 @@ import { VillageScene } from './game/scenes/VillageScene';
 import { EventBus } from './game/EventBus';
 import { loadState, saveState, shouldFetch, clearFetchCooldown } from './lib/stateManager';
 import { calculateProgress, GitHubData, OrcidData, ScholarData, TasksData, CalendarData } from './lib/progressCalculator';
+import { apiUrl } from './lib/apiClient';
 
 function App() {
     const phaserRef = useRef<IRefPhaserGame | null>(null);
@@ -33,7 +34,7 @@ function App() {
             // Fetch GitHub data if username is configured
             if (state.config.githubUsername) {
                 try {
-                    const res = await fetch(`/api/github?username=${encodeURIComponent(state.config.githubUsername)}`);
+                    const res = await fetch(apiUrl(`/api/github?username=${encodeURIComponent(state.config.githubUsername)}`));
                     if (res.ok) githubData = await res.json();
                 } catch (e) {
                     console.warn('GitHub fetch failed:', e);
@@ -43,7 +44,7 @@ function App() {
             // Fetch ORCID data if configured
             if (state.config.orcidId) {
                 try {
-                    const res = await fetch(`/api/orcid?orcidId=${encodeURIComponent(state.config.orcidId)}`);
+                    const res = await fetch(apiUrl(`/api/orcid?orcidId=${encodeURIComponent(state.config.orcidId)}`));
                     if (res.ok) orcidData = await res.json();
                 } catch (e) {
                     console.warn('ORCID fetch failed:', e);
@@ -53,7 +54,7 @@ function App() {
             // Fetch Google Scholar data if configured
             if (state.config.googleScholarId) {
                 try {
-                    const res = await fetch(`/api/scholar?authorId=${encodeURIComponent(state.config.googleScholarId)}`);
+                    const res = await fetch(apiUrl(`/api/scholar?authorId=${encodeURIComponent(state.config.googleScholarId)}`));
                     if (res.ok) scholarData = await res.json();
                 } catch (e) {
                     console.warn('Scholar fetch failed:', e);
@@ -63,7 +64,7 @@ function App() {
             // Fetch Google Tasks data if enabled
             if (state.config.googleTasksEnabled) {
                 try {
-                    const res = await fetch('/api/tasks');
+                    const res = await fetch(apiUrl('/api/tasks'));
                     if (res.ok) tasksData = await res.json();
                 } catch (e) {
                     console.warn('Tasks fetch failed:', e);
@@ -73,7 +74,7 @@ function App() {
             // Fetch Google Calendar data if configured
             if (state.config.googleCalendarId) {
                 try {
-                    const res = await fetch(`/api/calendar?calendarId=${encodeURIComponent(state.config.googleCalendarId)}`);
+                    const res = await fetch(apiUrl(`/api/calendar?calendarId=${encodeURIComponent(state.config.googleCalendarId)}`));
                     if (res.ok) calendarData = await res.json();
                 } catch (e) {
                     console.warn('Calendar fetch failed:', e);

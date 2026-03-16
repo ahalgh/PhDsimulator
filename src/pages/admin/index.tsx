@@ -1,5 +1,6 @@
 import Head from 'next/head';
 import { useState, useEffect, useRef } from 'react';
+import { apiUrl } from '@/lib/apiClient';
 
 interface Config {
     githubUsername: string;
@@ -93,7 +94,7 @@ export default function AdminPage() {
         }
         setTestResults(prev => ({ ...prev, github: 'Testing...' }));
         try {
-            const res = await fetch(`/api/github?username=${encodeURIComponent(config.githubUsername)}`);
+            const res = await fetch(apiUrl(`/api/github?username=${encodeURIComponent(config.githubUsername)}`));
             if (res.ok) {
                 const data = await res.json();
                 setTestResults(prev => ({
@@ -116,7 +117,7 @@ export default function AdminPage() {
         }
         setTestResults(prev => ({ ...prev, orcid: 'Testing...' }));
         try {
-            const res = await fetch(`/api/orcid?orcidId=${encodeURIComponent(config.orcidId)}`);
+            const res = await fetch(apiUrl(`/api/orcid?orcidId=${encodeURIComponent(config.orcidId)}`));
             if (res.ok) {
                 const data = await res.json();
                 setTestResults(prev => ({
@@ -139,7 +140,7 @@ export default function AdminPage() {
         }
         setTestResults(prev => ({ ...prev, scholar: 'Testing...' }));
         try {
-            const res = await fetch(`/api/scholar?authorId=${encodeURIComponent(config.googleScholarId)}`);
+            const res = await fetch(apiUrl(`/api/scholar?authorId=${encodeURIComponent(config.googleScholarId)}`));
             if (res.ok) {
                 const data = await res.json();
                 setTestResults(prev => ({
@@ -158,7 +159,7 @@ export default function AdminPage() {
     const testTasks = async () => {
         setTestResults(prev => ({ ...prev, tasks: 'Testing...' }));
         try {
-            const res = await fetch('/api/tasks');
+            const res = await fetch(apiUrl('/api/tasks'));
             if (res.ok) {
                 const data = await res.json();
                 setTestResults(prev => ({
@@ -181,7 +182,7 @@ export default function AdminPage() {
         }
         setTestResults(prev => ({ ...prev, calendar: 'Testing...' }));
         try {
-            const res = await fetch(`/api/calendar?calendarId=${encodeURIComponent(config.googleCalendarId)}`);
+            const res = await fetch(apiUrl(`/api/calendar?calendarId=${encodeURIComponent(config.googleCalendarId)}`));
             if (res.ok) {
                 const data = await res.json();
                 setTestResults(prev => ({
