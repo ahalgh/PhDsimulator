@@ -1853,15 +1853,27 @@ export class VillageScene extends Scene {
 
     // ─── Public API ───
     public updateVillage(progress: VillageProgress) {
-        this.villageProgress = progress;
+        const upgrades: Array<{ type: string; oldLevel: number; newLevel: number }> = [];
+
         for (const building of this.buildings) {
             if (building.type === BuildingType.HOUSE) continue;
             const newData = progress.buildings[building.type];
-            if (newData.level !== building.level) {
+            if (newData.level > building.level) {
+                // Level increased — queue cinematic upgrade animation
+                upgrades.push({ type: building.type, oldLevel: building.level, newLevel: newData.level });
+            } else if (newData.level !== building.level) {
+                // Level decreased (data correction) — update silently
                 building.sprite.setTexture(`${building.type}_lv${newData.level}`);
                 building.level = newData.level;
             }
         }
+
+        this.villageProgress = progress;
+
+        if (upgrades.length > 0) {
+            this.animateUpgrades(upgrades);
+        }
+
         EventBus.emit('village-updated', progress);
 
         // Check achievements after every village update
