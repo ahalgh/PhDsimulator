@@ -119,6 +119,19 @@ export function calculateProgress(
         }
     }
 
+    // Scholar Port is always unlocked — it's the home port, always open for exploration
+    const scholarPort = TRAVEL_DESTINATIONS.find(d => d.id === 'scholar-port')!;
+    if (!matchedIds.has('scholar-port')) {
+        travelDestinations.unshift({
+            id: scholarPort.id,
+            name: 'Home Port',
+            fantasyName: scholarPort.fantasyName,
+            region: scholarPort.region,
+            unlocked: true,
+            conferenceKey: 'scholar-port',
+        });
+    }
+
     return {
         resources: { researchPoints, knowledge, reputation },
         buildings: {

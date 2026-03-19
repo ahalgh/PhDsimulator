@@ -636,144 +636,276 @@ export class VillageScene extends Scene {
         const items: GameObjects.GameObject[] = [];
 
         // Dark backdrop
-        const backdrop = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.8)
-            .setScrollFactor(0).setDepth(3000)
-            .setInteractive();
-
-        // Clicking backdrop closes overlay
+        const backdrop = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.85)
+            .setScrollFactor(0).setDepth(3000).setInteractive();
         backdrop.on('pointerdown', () => this.hideTravelOverlay());
         items.push(backdrop);
 
-        // Title (below HUD bar at ~30px)
-        const title = this.add.text(w / 2, 60, 'Sea Chart of Atlantis', {
-            fontFamily: 'Georgia, serif',
-            fontSize: '22px',
-            color: '#FFD700',
-            stroke: '#000000',
-            strokeThickness: 4,
-            fontStyle: 'bold',
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(3001);
-        items.push(title);
+        // Title
+        const unlockedCount = this.villageProgress.travelDestinations.length;
+        const totalCount = TRAVEL_DESTINATIONS.length;
+        const title = this.add.text(w / 2, 55, 'Sea Chart of Atlantis', {
+            fontFamily: 'Georgia, serif', fontSize: '22px',
+            color: '#FFD700', stroke: '#000000', strokeThickness: 4, fontStyle: 'bold',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3001).setAlpha(0);
+        const subtitle = this.add.text(w / 2, 82, `${unlockedCount} of ${totalCount} voyages charted`, {
+            fontFamily: 'Arial', fontSize: '11px', color: '#aaaaaa',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3001).setAlpha(0);
+        items.push(title, subtitle);
+        this.tweens.add({ targets: [title, subtitle], alpha: 1, duration: 300 });
 
         // Home node (Atlantis)
         const centerX = w / 2;
         const centerY = h / 2 + 10;
-        const homeDot = this.add.circle(centerX, centerY, 16, 0xFFD700)
-            .setScrollFactor(0).setDepth(3002);
-        const homeLabel = this.add.text(centerX, centerY + 24, 'Atlantis', {
-            fontFamily: 'Georgia, serif', fontSize: '12px', color: '#FFD700',
-            stroke: '#000', strokeThickness: 2,
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(3002);
+        const homeDot = this.add.circle(centerX, centerY, 18, 0xFFD700)
+            .setScrollFactor(0).setDepth(3002).setAlpha(0);
+        const homeLabel = this.add.text(centerX, centerY + 26, 'Atlantis\n(Home)', {
+            fontFamily: 'Georgia, serif', fontSize: '11px', color: '#FFD700',
+            stroke: '#000', strokeThickness: 2, align: 'center',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3002).setAlpha(0);
         items.push(homeDot, homeLabel);
+        this.tweens.add({ targets: [homeDot, homeLabel], alpha: 1, duration: 300, delay: 100 });
 
-        // Destination nodes arranged in a circle
+        // Destination nodes arranged in a circle with stagger
         const destinations = this.villageProgress.travelDestinations;
         const allDests = TRAVEL_DESTINATIONS;
-        const nodeRadius = Math.min(w, h) * 0.32;
+        const nodeRadius = Math.min(w, h) * 0.33;
 
         allDests.forEach((destConfig, i) => {
             const angle = (i / allDests.length) * Math.PI * 2 - Math.PI / 2;
             const nx = centerX + Math.cos(angle) * nodeRadius;
             const ny = centerY + Math.sin(angle) * nodeRadius;
             const unlocked = destinations.find(d => d.id === destConfig.id);
+            const staggerDelay = 150 + i * 60;
 
             // Dashed line from center to node
-            const line = this.add.graphics().setScrollFactor(0).setDepth(3001);
-            line.lineStyle(1, unlocked ? 0xFFD700 : 0x333333, unlocked ? 0.5 : 0.2);
-            const steps = 16;
+            const line = this.add.graphics().setScrollFactor(0).setDepth(3001).setAlpha(0);
+            line.lineStyle(1, unlocked ? 0xFFD700 : 0x444444, unlocked ? 0.6 : 0.25);
+            const steps = 18;
             for (let s = 0; s < steps; s += 2) {
                 const t1 = s / steps;
                 const t2 = (s + 1) / steps;
-                line.moveTo(
-                    centerX + (nx - centerX) * t1,
-                    centerY + (ny - centerY) * t1
-                );
-                line.lineTo(
-                    centerX + (nx - centerX) * t2,
-                    centerY + (ny - centerY) * t2
-                );
+                line.moveTo(centerX + (nx - centerX) * t1, centerY + (ny - centerY) * t1);
+                line.lineTo(centerX + (nx - centerX) * t2, centerY + (ny - centerY) * t2);
             }
             line.strokePath();
             items.push(line);
+            this.tweens.add({ targets: line, alpha: 1, duration: 250, delay: staggerDelay });
 
             // Node circle
-            const nodeColor = unlocked ? destConfig.themeColor : 0x333333;
-            const node = this.add.circle(nx, ny, 12, nodeColor)
-                .setScrollFactor(0).setDepth(3002);
+            const nodeColor = unlocked ? destConfig.themeColor : 0x2a2a2a;
+            const nodeR = unlocked ? 14 : 11;
+            const node = this.add.circle(nx, ny, nodeR, nodeColor)
+                .setScrollFactor(0).setDepth(3002).setAlpha(0).setScale(0.4);
             if (unlocked) {
+                node.setStrokeStyle(2, 0xFFD700);
                 node.setInteractive({ useHandCursor: true });
-                node.on('pointerover', () => node.setScale(1.25));
-                node.on('pointerout', () => node.setScale(1.0));
+                node.on('pointerover', () => { node.setScale(1.2); });
+                node.on('pointerout', () => { node.setScale(1.0); });
                 node.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
                     pointer.event.stopPropagation();
                     this.showDestinationPopup(unlocked, destConfig);
                 });
             } else {
-                node.setAlpha(0.4);
+                node.setStrokeStyle(1, 0x444444);
             }
             items.push(node);
+            this.tweens.add({ targets: node, alpha: unlocked ? 1 : 0.45, scaleX: 1, scaleY: 1, duration: 300, ease: 'Back.easeOut', delay: staggerDelay });
 
-            // Label
-            const label = this.add.text(nx, ny + 18, destConfig.fantasyName, {
-                fontFamily: 'Georgia, serif', fontSize: '9px',
+            // Fantasy name label
+            const label = this.add.text(nx, ny + (nodeR + 8), destConfig.fantasyName, {
+                fontFamily: 'Georgia, serif', fontSize: '10px',
                 color: unlocked ? '#ffffff' : '#555555',
                 stroke: '#000', strokeThickness: 2,
-            }).setOrigin(0.5).setScrollFactor(0).setDepth(3002);
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(3002).setAlpha(0);
             items.push(label);
+            this.tweens.add({ targets: label, alpha: 1, duration: 250, delay: staggerDelay + 80 });
 
-            // Lock icon or checkmark
-            if (!unlocked) {
-                const lockIcon = this.add.text(nx, ny - 1, '?', {
-                    fontFamily: 'Arial', fontSize: '12px', color: '#555555',
-                    fontStyle: 'bold',
-                }).setOrigin(0.5).setScrollFactor(0).setDepth(3003);
+            if (unlocked) {
+                // Checkmark on unlocked nodes
+                const check = this.add.text(nx, ny, '✓', {
+                    fontFamily: 'Arial', fontSize: '13px', color: '#ffffff', fontStyle: 'bold',
+                }).setOrigin(0.5).setScrollFactor(0).setDepth(3003).setAlpha(0);
+                items.push(check);
+                this.tweens.add({ targets: check, alpha: 1, duration: 250, delay: staggerDelay + 100 });
+            } else {
+                // Locked: show lock icon + conference hint below name
+                const lockIcon = this.add.text(nx, ny, '🔒', {
+                    fontFamily: 'Arial', fontSize: '11px',
+                }).setOrigin(0.5).setScrollFactor(0).setDepth(3003).setAlpha(0);
                 items.push(lockIcon);
+                this.tweens.add({ targets: lockIcon, alpha: 0.5, duration: 250, delay: staggerDelay + 80 });
+
+                // Show conference hint — what event unlocks this destination
+                if (destConfig.conferencePatterns.length > 0) {
+                    const hint = destConfig.conferencePatterns[0].toUpperCase();
+                    const hintLabel = this.add.text(nx, ny + (nodeR + 20), hint, {
+                        fontFamily: 'Arial', fontSize: '8px', color: '#444444',
+                        stroke: '#000', strokeThickness: 1,
+                    }).setOrigin(0.5).setScrollFactor(0).setDepth(3002).setAlpha(0);
+                    items.push(hintLabel);
+                    this.tweens.add({ targets: hintLabel, alpha: 1, duration: 250, delay: staggerDelay + 120 });
+                }
             }
         });
 
         // Close hint
-        const closeHint = this.add.text(w / 2, h - 30, 'Click anywhere to close', {
-            fontFamily: 'Arial', fontSize: '11px', color: '#666666',
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(3001);
+        const closeHint = this.add.text(w / 2, h - 28, 'Click anywhere to close', {
+            fontFamily: 'Arial', fontSize: '11px', color: '#555555',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3001).setAlpha(0);
         items.push(closeHint);
+        this.tweens.add({ targets: closeHint, alpha: 1, duration: 400, delay: 600 });
 
         this.travelOverlayItems = items;
     }
 
     private showDestinationPopup(dest: TravelDestination, config: TravelDestinationConfig) {
         const cam = this.cameras.main;
+        const cx = cam.width / 2;
+        const cy = cam.height / 2;
         const popupItems: GameObjects.GameObject[] = [];
 
-        const bg = this.add.rectangle(cam.width / 2, cam.height / 2, 280, 130, 0x1a1a2e, 0.95)
+        // Destroy any existing popup
+        this.travelOverlayItems
+            .filter(i => (i as GameObjects.GameObject & { isPopup?: boolean }).isPopup)
+            .forEach(i => i.destroy());
+
+        const bg = this.add.rectangle(cx, cy, 300, 180, 0x0d0d1a, 0.97)
             .setStrokeStyle(2, config.themeColor)
-            .setScrollFactor(0).setDepth(3100);
+            .setScrollFactor(0).setDepth(3100).setAlpha(0);
+        (bg as GameObjects.GameObject & { isPopup?: boolean }).isPopup = true;
         popupItems.push(bg);
 
-        const titleText = this.add.text(cam.width / 2, cam.height / 2 - 40, dest.fantasyName, {
-            fontFamily: 'Georgia, serif', fontSize: '18px',
+        const colorHex = '#' + config.themeColor.toString(16).padStart(6, '0');
+
+        const nameText = this.add.text(cx, cy - 62, dest.fantasyName, {
+            fontFamily: 'Georgia, serif', fontSize: '20px',
             color: '#FFD700', fontStyle: 'bold',
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(3101);
-        popupItems.push(titleText);
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3101).setAlpha(0);
+        popupItems.push(nameText);
 
-        const confText = this.add.text(cam.width / 2, cam.height / 2 - 15, `Conference: ${dest.name}`, {
-            fontFamily: 'Arial', fontSize: '12px', color: '#aaaaaa',
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(3101);
-        popupItems.push(confText);
+        const regionText = this.add.text(cx, cy - 38, config.region.replace('-', ' ').toUpperCase(), {
+            fontFamily: 'Arial', fontSize: '10px', color: colorHex, letterSpacing: 2,
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3101).setAlpha(0);
+        popupItems.push(regionText);
 
-        const descText = this.add.text(cam.width / 2, cam.height / 2 + 5, config.description, {
-            fontFamily: 'Arial', fontSize: '11px', color: '#cccccc',
-            fontStyle: 'italic',
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(3101);
+        const sep = this.add.graphics().setScrollFactor(0).setDepth(3101).setAlpha(0);
+        sep.lineStyle(1, config.themeColor, 0.4);
+        sep.moveTo(cx - 100, cy - 22); sep.lineTo(cx + 100, cy - 22); sep.strokePath();
+        popupItems.push(sep);
+
+        const descText = this.add.text(cx, cy - 5, config.description, {
+            fontFamily: 'Arial', fontSize: '12px', color: '#cccccc',
+            fontStyle: 'italic', wordWrap: { width: 260 }, align: 'center',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3101).setAlpha(0);
         popupItems.push(descText);
 
-        const unlockText = this.add.text(cam.width / 2, cam.height / 2 + 30, 'Destination unlocked!', {
-            fontFamily: 'Georgia, serif', fontSize: '13px', color: '#66BB6A',
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(3101);
-        popupItems.push(unlockText);
+        const confLabel = dest.id === 'scholar-port'
+            ? 'Your home port'
+            : `Visited: ${dest.name}`;
+        const confText = this.add.text(cx, cy + 30, confLabel, {
+            fontFamily: 'Arial', fontSize: '11px', color: '#888888',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3101).setAlpha(0);
+        popupItems.push(confText);
 
-        // Auto-dismiss after 3 seconds
-        this.time.delayedCall(3000, () => {
+        // "Set Sail!" button
+        const btnBg = this.add.rectangle(cx, cy + 62, 120, 28, config.themeColor, 0.9)
+            .setScrollFactor(0).setDepth(3102).setAlpha(0)
+            .setInteractive({ useHandCursor: true });
+        const btnText = this.add.text(cx, cy + 62, '⛵  Set Sail!', {
+            fontFamily: 'Georgia, serif', fontSize: '13px', color: '#ffffff', fontStyle: 'bold',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(3103).setAlpha(0);
+        btnBg.on('pointerover', () => btnBg.setScale(1.05));
+        btnBg.on('pointerout', () => btnBg.setScale(1.0));
+        btnBg.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+            pointer.event.stopPropagation();
             for (const item of popupItems) item.destroy();
+            this.sailToDestination(dest, config);
+        });
+        popupItems.push(btnBg, btnText);
+
+        // Fade all in together
+        this.tweens.add({
+            targets: popupItems,
+            alpha: 1,
+            duration: 200,
+            ease: 'Cubic.easeOut',
+        });
+
+        // Mark popup items so we can clear them if another node is clicked
+        popupItems.forEach(i => { (i as GameObjects.GameObject & { isPopup?: boolean }).isPopup = true; });
+        this.travelOverlayItems.push(...popupItems);
+    }
+
+    private sailToDestination(dest: TravelDestination, config: TravelDestinationConfig) {
+        this.hideTravelOverlay();
+
+        const { dock } = VILLAGE_LAYOUT;
+        const { x: dockScreenX, y: dockScreenY } = this.tileToScreen(dock.tileX, dock.tileY);
+
+        // Scholar walks to dock
+        this.scholarTileX = dock.tileX;
+        this.scholarTileY = dock.tileY;
+        this.cameras.main.stopFollow();
+        this.tweens.add({
+            targets: this.scholar,
+            x: dockScreenX,
+            y: dockScreenY - 16,
+            duration: 800,
+            ease: 'Sine.easeInOut',
+            onComplete: () => {
+                this.scholar.setVisible(false);
+
+                // Ship sails away
+                this.tweens.add({
+                    targets: this.shipSprite,
+                    x: this.shipSprite.x + 300,
+                    y: this.shipSprite.y + 150,
+                    alpha: 0,
+                    duration: 1200,
+                    ease: 'Cubic.easeIn',
+                    onComplete: () => {
+                        // Fade to black
+                        this.cameras.main.fade(600, 0, 0, 0);
+                        this.time.delayedCall(700, () => {
+                            // Reset ship position
+                            const { x: sx, y: sy } = this.tileToScreen(dock.shipTileX, dock.shipTileY);
+                            this.shipSprite.setPosition(sx, sy - 32).setAlpha(1);
+
+                            // Scholar back at dock
+                            this.scholar.setPosition(dockScreenX, dockScreenY - 16).setVisible(true);
+
+                            // Fade back in
+                            this.cameras.main.fadeIn(800, 0, 0, 0);
+                            this.cameras.main.startFollow(this.scholar, true, 0.08, 0.08);
+
+                            // Return toast
+                            this.time.delayedCall(900, () => {
+                                const cam = this.cameras.main;
+                                const colorHex = '#' + config.themeColor.toString(16).padStart(6, '0');
+                                const toast = this.add.text(cam.width / 2, 110,
+                                    `Returned from ${dest.fantasyName}  ✓`,
+                                    {
+                                        fontFamily: 'Georgia, serif', fontSize: '16px',
+                                        color: colorHex, stroke: '#000000', strokeThickness: 4,
+                                        fontStyle: 'bold',
+                                    }
+                                ).setOrigin(0.5).setScrollFactor(0).setDepth(3200);
+
+                                this.tweens.add({
+                                    targets: toast,
+                                    y: 85,
+                                    alpha: 0,
+                                    duration: 3000,
+                                    ease: 'Cubic.easeOut',
+                                    delay: 1500,
+                                    onComplete: () => toast.destroy(),
+                                });
+                            });
+                        });
+                    },
+                });
+            },
         });
     }
 
@@ -1765,6 +1897,9 @@ export class VillageScene extends Scene {
         });
         this.input.keyboard!.on('keydown-Y', () => {
             this.toggleTrophyCase();
+        });
+        this.input.keyboard!.on('keydown-T', () => {
+            this.toggleTravelOverlay();
         });
         this.input.keyboard!.on('keydown-ESC', () => {
             if (this.buildingDetailVisible) this.hideBuildingDetail();

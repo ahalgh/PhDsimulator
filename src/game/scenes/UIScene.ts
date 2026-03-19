@@ -75,7 +75,7 @@ export class UIScene extends Scene {
 
         // Controls hint (bottom left)
         this.add.text(10, this.scale.height - 10,
-            'Arrow keys to move | Scroll to zoom | Click NPCs & buildings | Tab for progress | Y for trophies | Ship to travel',
+            'Arrow keys to move | Scroll to zoom | Click NPCs & buildings | Tab for progress | Y for trophies | T or Ship to travel',
             { fontFamily: 'Arial', fontSize: '11px', color: '#666666' }
         ).setOrigin(0, 1).setScrollFactor(0).setDepth(100);
 

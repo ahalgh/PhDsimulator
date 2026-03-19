@@ -66,6 +66,22 @@ export function loadState(): GameState {
             parsed.version = 3;
         }
 
+        // Always ensure Scholar Port is present (it's always unlocked)
+        const SCHOLAR_PORT_ID = 'scholar-port';
+        for (const vp of [parsed.village, parsed.previousVillage].filter(Boolean)) {
+            const v = vp as VillageProgress;
+            if (!v.travelDestinations.find(d => d.id === SCHOLAR_PORT_ID)) {
+                v.travelDestinations.unshift({
+                    id: SCHOLAR_PORT_ID,
+                    name: 'Home Port',
+                    fantasyName: 'Scholar Port',
+                    region: 'any',
+                    unlocked: true,
+                    conferenceKey: SCHOLAR_PORT_ID,
+                });
+            }
+        }
+
         return parsed;
     } catch {
         return getDefaultGameState();

@@ -110,7 +110,10 @@ export function getDefaultVillageProgress(): VillageProgress {
             houses: { count: 0 },
         },
         decorations: { trees: 0, banners: 0, fountains: 0 },
-        travelDestinations: [],
+        travelDestinations: [
+            // Scholar Port is always unlocked — the home port, open from day one
+            { id: 'scholar-port', name: 'Home Port', fantasyName: 'Scholar Port', region: 'any', unlocked: true, conferenceKey: 'scholar-port' },
+        ],
         lastUpdated: new Date().toISOString(),
     };
 }
