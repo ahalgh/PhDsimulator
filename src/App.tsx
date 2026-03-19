@@ -4,7 +4,8 @@ import { VillageScene } from './game/scenes/VillageScene';
 import { EventBus } from './game/EventBus';
 import { loadState, saveState, shouldFetch, clearFetchCooldown } from './lib/stateManager';
 import { calculateProgress, GitHubData, OrcidData, ScholarData, TasksData, CalendarData } from './lib/progressCalculator';
-import { apiUrl } from './lib/apiClient';
+import { apiUrl, hasBackend } from './lib/apiClient';
+import { fetchGitHubDirect, fetchOrcidDirect } from './lib/dataSources';
 
 function App() {
     const phaserRef = useRef<IRefPhaserGame | null>(null);
@@ -31,21 +32,30 @@ function App() {
             let tasksData: TasksData | null = null;
             let calendarData: CalendarData | null = null;
 
-            // Fetch GitHub data if username is configured
+            // Fetch GitHub data — direct call (public API, works on static hosts)
+            // Falls back to backend route only when a backend URL is configured (adds GraphQL + token)
             if (state.config.githubUsername) {
                 try {
-                    const res = await fetch(apiUrl(`/api/github?username=${encodeURIComponent(state.config.githubUsername)}`));
-                    if (res.ok) githubData = await res.json();
+                    if (hasBackend()) {
+                        const res = await fetch(apiUrl(`/api/github?username=${encodeURIComponent(state.config.githubUsername)}`));
+                        if (res.ok) githubData = await res.json();
+                    } else {
+                        githubData = await fetchGitHubDirect(state.config.githubUsername);
+                    }
                 } catch (e) {
                     console.warn('GitHub fetch failed:', e);
                 }
             }
 
-            // Fetch ORCID data if configured
+            // Fetch ORCID data — direct call (fully public API, CORS supported)
             if (state.config.orcidId) {
                 try {
-                    const res = await fetch(apiUrl(`/api/orcid?orcidId=${encodeURIComponent(state.config.orcidId)}`));
-                    if (res.ok) orcidData = await res.json();
+                    if (hasBackend()) {
+                        const res = await fetch(apiUrl(`/api/orcid?orcidId=${encodeURIComponent(state.config.orcidId)}`));
+                        if (res.ok) orcidData = await res.json();
+                    } else {
+                        orcidData = await fetchOrcidDirect(state.config.orcidId);
+                    }
                 } catch (e) {
                     console.warn('ORCID fetch failed:', e);
                 }
